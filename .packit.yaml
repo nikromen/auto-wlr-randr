@@ -5,23 +5,29 @@ jobs:
     trigger: pull_request
     targets:
       - fedora-all
+    enable_net: true
 
   - job: copr_build
     trigger: commit
     targets:
       - fedora-all
     owner: "nikromen"
-    project: "auto-wlr-randr-git"
+    project: "auto-wlr-randr"
     branch: main
     list_on_homepage: True
     preserve_project: True
+    enable_net: true
+    actions:
+      post-modifications:
+        - bash -c "sed -i '1i%global git_build 1' files/auto-wlr-randr.spec"
 
   - job: copr_build
     trigger: release
     targets:
       - fedora-all
     owner: "nikromen"
-    project: "auto-wlr-randr-git"
+    project: "auto-wlr-randr"
     branch: main
     list_on_homepage: True
     preserve_project: True
+    enable_net: true

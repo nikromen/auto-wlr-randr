@@ -1,4 +1,13 @@
-Name:           auto-wlr-randr
+%global srcname auto-wlr-randr
+
+%if 0%{?git_build}
+%global pkg_name auto-wlr-randr-git
+%else
+%global pkg_name %srcname
+%endif
+
+
+Name:           %pkg_name
 Version:        1.0.0
 Release:        %autorelease
 Summary:        Automatic display configuration for Wayland compositors
@@ -14,12 +23,21 @@ BuildRequires:  wayland-devel
 
 Requires:       wlr-randr
 
+%if 0%{?git_build}
+Provides:       auto-wlr-randr = %{version}-%{release}
+Obsoletes:      auto-wlr-randr < %{version}-%{release}
+%endif
+
 
 %description
 auto-wlr-randr is a daemon that automatically manages display configurations
 for Wayland compositors implementing the wlr-output-management protocol.
 It detects connected displays and applies appropriate configuration profiles,
 making multi-monitor setups seamless in Wayland environments.
+%if 0%{?git_build}
+
+This is a development build from the main branch.
+%endif
 
 
 %prep
@@ -27,20 +45,20 @@ making multi-monitor setups seamless in Wayland environments.
 
 
 %build
-%{cargo_build}
+cargo build --profile rpm --all-features
 
 
 %install
-%{cargo_install}
-install -Dpm 0755 %{cargo_bin_path}/%{name} %{buildroot}%{_bindir}/%{name}
-install -Dpm 0755 %{cargo_bin_path}/%{name}ctl %{buildroot}%{_bindir}/%{name}ctl
+mkdir -p %{buildroot}%{_bindir}
+install -p -m 0755 target/rpm/auto-wlr-randr %{buildroot}%{_bindir}/%{srcname}
+install -p -m 0755 target/rpm/auto-wlr-randrctl %{buildroot}%{_bindir}/%{srcname}ctl
 
 # Install systemd user unit file
 mkdir -p %{buildroot}%{_userunitdir}
-mkdir -p %{buildroot}%{_datadir}/auto-wlr-randr
+install -m 644 files/auto-wlr-randr.service %{buildroot}%{_userunitdir}/auto-wlr-randr.service
 
 # Install example config
-install -Dpm 0644 config.toml %{buildroot}%{_datadir}/auto-wlr-randr/config.toml.example
+install -Dpm 0644 files/config.toml %{buildroot}%{_datadir}/auto-wlr-randr/config.toml.example
 
 
 %check
@@ -50,10 +68,10 @@ install -Dpm 0644 config.toml %{buildroot}%{_datadir}/auto-wlr-randr/config.toml
 %files
 %license LICENSE
 %doc README.md
-%{_bindir}/%{name}
-%{_bindir}/%{name}ctl
-%{_userunitdir}/%{name}.service
+%{_bindir}/%{srcname}
+%{_bindir}/%{srcname}ctl
 %{_datadir}/auto-wlr-randr/config.toml.example
+%{_userunitdir}/%{srcname}.service
 
 
 %changelog
