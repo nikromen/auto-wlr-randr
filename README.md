@@ -46,6 +46,10 @@ If you're using Fedora, you can install an RPM package from Copr repository:
 ```bash
 sudo dnf copr enable nikromen/auto-wlr-randr
 sudo dnf install auto-wlr-randr
+# or -git version which is built against main branch
+sudo dnf install auto-wlr-randr-git
+# enable the systemd service
+systemctl --user enable --now auto-wlr-randr.service
 ```
 
 ## Configuration
