@@ -1,0 +1,33 @@
+[package]
+name = "auto-wlr-randr"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+wayland-client = "0.31"
+anyhow = "1"
+log = "0.4"
+env_logger = "0.11"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+glob = "0.3"
+clap = { version = "4.5.7", features = ["derive"] }
+serde_json = "1.0.117"
+libc = "0.2.175"
+mio = { version = "0.8", features = ["net", "os-ext", "os-poll"] }
+
+[dev-dependencies]
+mockall = "0.12.1"
+tempfile = "3.8.1"
+assert_fs = "1.1.1"
+rstest = "0.18.2"
+test-log = "0.2.14"
+
+
+[[bin]]
+name = "auto-wlr-randr"
+path = "src/bin/daemon.rs"
+
+[[bin]]
+name = "auto-wlr-randrctl"
+path = "src/bin/ctl.rs"

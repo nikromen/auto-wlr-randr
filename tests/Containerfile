@@ -1,0 +1,15 @@
+FROM fedora:latest
+
+RUN dnf update -y && \
+    dnf install -y cargo && \
+    dnf clean all
+
+RUN useradd -m -s /bin/bash tester
+
+WORKDIR /app
+
+COPY --chown=tester:tester . /app
+
+USER tester
+
+CMD ["/bin/bash"]

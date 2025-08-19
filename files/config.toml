@@ -1,0 +1,59 @@
+# # Specify your profile under profile.<profile_name>
+# # If all outputs in the profile matches the reality, the profile is used.
+# [profile.my_profile]
+# name = "My profile name"
+#
+# # Run these commands. These are handled asynchronously
+# exec = [
+# "echo 'hello from auto-wlr-randr!'",
+# "hyprctl dispatch 'hyprexpo:expo' toggle"
+# ]
+#
+# # Apply these settings for the outputs. These settings mirrors the wlr-randr options
+# [[profile.my_profile.settings]]
+# # Could be either output name or manufacturer name. Regex are supported.
+# # This is example of manufacturer full name.
+# output = "Dell Inc. DELL XYZ ABC"
+# on = true
+# mode = "1920x1080@144Hz"
+#
+# # This is settings for second monitor/output
+# [[profile.my_profile.settings]]
+# # Output name can be passed directly too, but these may change.
+# output = "DP-11"
+# on = true
+# mode = "1920x1080"
+# pos = "1920,0"
+# scale = 1.0
+#
+# # This is settings for third monitor
+# [[profile.my_profile.settings]]
+# # Pattern matching here is used.
+# output = "Dell Inc. *"
+# mode = "1920x1080@144Hz"
+#
+# # This is another profile
+# [profile.another_profile]
+# name = "Profile name"
+#
+# # We could only run a command without using wlr-randr if you want, just skip the settings
+# # and only put output there that should match. If you want to execute commands in sequence,
+# # use single command and separate it with semicolon
+# exec = ["echo 'hello from auto-wlr-randr!'; hyprctl dispatch 'hyprexpo:expo' toggle"]
+#
+# [[profile.another_profile.settings]]
+# output = "Some Company *"
+#
+# [[profile.another_profile.settings]]
+# output = "Other Monitor"
+#
+# # Or vice versa we could leave exec empty and just set up wlr-randr
+# [profile.yet_another_profile]
+# name = "Profile name"
+#
+# [[profile.yet_another_profile.settings]]
+# # Could be either output name or manufacturer name. Regex are supported.
+# # This is example of manufacturer full name.
+# output = "Dell Inc. DELL XYZ ABC"
+# on = true
+# mode = "1920x1080@144Hz"

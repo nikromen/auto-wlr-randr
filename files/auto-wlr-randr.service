@@ -1,0 +1,15 @@
+[Unit]
+Description=Automatic display configuration for Wayland compositors (user mode)
+Documentation=https://github.com/nikromen/auto-wlr-randr
+After=graphical-session.target
+ConditionPathExists=%h/.config/auto-wlr-randr/config.toml
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/auto-wlr-randr --config %h/.config/auto-wlr-randr/config.toml
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target
