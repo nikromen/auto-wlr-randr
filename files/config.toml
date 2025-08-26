@@ -1,7 +1,6 @@
 # # Specify your profile under profile.<profile_name>
 # # If all outputs in the profile matches the reality, the profile is used.
 # [profile.my_profile]
-# name = "My profile name"
 #
 # # Run these commands. These are handled asynchronously
 # exec = [
@@ -34,7 +33,6 @@
 #
 # # This is another profile
 # [profile.another_profile]
-# name = "Profile name"
 #
 # # We could only run a command without using wlr-randr if you want, just skip the settings
 # # and only put output there that should match. If you want to execute commands in sequence,
@@ -49,7 +47,6 @@
 #
 # # Or vice versa we could leave exec empty and just set up wlr-randr
 # [profile.yet_another_profile]
-# name = "Profile name"
 #
 # [[profile.yet_another_profile.settings]]
 # # Could be either output name or manufacturer name. Regex are supported.

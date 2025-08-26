@@ -20,6 +20,7 @@ BuildRequires:  gcc
 BuildRequires:  cargo
 BuildRequires:  systemd-rpm-macros
 BuildRequires:  wayland-devel
+BuildRequires:  pandoc
 
 Requires:       wlr-randr
 
@@ -47,6 +48,12 @@ This is a development build from the main branch.
 %build
 cargo build --profile rpm --all-features
 
+# Generate man pages from markdown
+mkdir -p man/man1 man/man5
+pandoc -s -f markdown -t man man/auto-wlr-randr.1.md -o man/man1/auto-wlr-randr.1
+pandoc -s -f markdown -t man man/auto-wlr-randrctl.1.md -o man/man1/auto-wlr-randrctl.1
+pandoc -s -f markdown -t man man/auto-wlr-randr.5.md -o man/man5/auto-wlr-randr.5
+
 
 %install
 mkdir -p %{buildroot}%{_bindir}
@@ -60,6 +67,13 @@ install -m 644 files/auto-wlr-randr.service %{buildroot}%{_userunitdir}/auto-wlr
 # Install example config
 install -Dpm 0644 files/config.toml %{buildroot}%{_datadir}/auto-wlr-randr/config.toml.example
 
+# Install man pages
+mkdir -p %{buildroot}%{_mandir}/man1
+mkdir -p %{buildroot}%{_mandir}/man5
+install -m 644 man/man1/auto-wlr-randr.1 %{buildroot}%{_mandir}/man1/
+install -m 644 man/man1/auto-wlr-randrctl.1 %{buildroot}%{_mandir}/man1/
+install -m 644 man/man5/auto-wlr-randr.5 %{buildroot}%{_mandir}/man5/
+
 
 %check
 %{cargo_test}
@@ -72,6 +86,9 @@ install -Dpm 0644 files/config.toml %{buildroot}%{_datadir}/auto-wlr-randr/confi
 %{_bindir}/%{srcname}ctl
 %{_datadir}/auto-wlr-randr/config.toml.example
 %{_userunitdir}/%{srcname}.service
+%{_mandir}/man1/auto-wlr-randr.1*
+%{_mandir}/man1/auto-wlr-randrctl.1*
+%{_mandir}/man5/auto-wlr-randr.5*
 
 
 %changelog

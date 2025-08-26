@@ -51,8 +51,6 @@ pub struct OutputSetting {
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct Profile {
-    pub name: String,
-
     #[serde(default)]
     pub exec: Vec<String>,
 
@@ -166,16 +164,16 @@ impl Config {
     pub fn find_matching_profile<'a>(
         &'a self,
         connected_outputs: &[OutputData],
-    ) -> Option<(&'a Profile, HashMap<String, String>)> {
+    ) -> Option<(String, &'a Profile, HashMap<String, String>)> {
         // TODO: rozdelit, je to slozite
         // TODO: vazne musi vylezt mapy?
-        'profile_loop: for profile in self.profiles.values() {
+        'profile_loop: for (profile_id, profile) in &self.profiles {
             if profile.settings.len() != connected_outputs.len() {
                 continue;
             }
             if profile.settings.is_empty() {
                 return if connected_outputs.is_empty() {
-                    Some((profile, HashMap::new()))
+                    Some((profile_id.clone(), profile, HashMap::new()))
                 } else {
                     None
                 };
@@ -213,7 +211,7 @@ impl Config {
                 }
             }
 
-            return Some((profile, output_name_map));
+            return Some((profile_id.clone(), profile, output_name_map));
         }
 
         None
