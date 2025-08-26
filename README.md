@@ -52,6 +52,18 @@ sudo dnf install auto-wlr-randr-git
 systemctl --user enable --now auto-wlr-randr.service
 ```
 
+## Manual
+
+Read these:
+
+```bash
+man 1 auto-wlr-randr
+man 5 auto-wlr-randr
+man 1 auto-wlr-randrctl
+```
+
+Or read the short guilde below.
+
 ## Configuration
 
 Create a configuration file at `~/.config/auto-wlr-randr/config.toml`.
@@ -86,3 +98,7 @@ auto-wlr-randrctl reload
 # Switch to a profile
 auto-wlr-randrctl switch home-office
 ```
+
+## Note
+
+The functionality and interface is inspired by [kanshi](https://github.com/emersion/kanshi), but differs in that it uses wlr-randr instead of implementing the protocol directly. This approach was chosen because when this tool was created as a proof of concept, the wlr-randr protocol implementation was more advanced than the implementation of kanshi. Additionally, auto-wlr-randr uses TOML configuration files which have library support across various programming languages, making it easier to develop frontends for it, which was needed for the [wayrandr](https://github.com/nikromen/wayrandr) project.
