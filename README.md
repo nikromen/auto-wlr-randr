@@ -31,12 +31,31 @@ auto-wlr-randr is a daemon that automatically monitors and configures connected 
    cargo build --release
    ```
 
-3. Install binaries and service:
+3. Install binaries and (optional) service:
+
    ```bash
    sudo cp target/release/auto-wlr-randr /usr/local/bin/
    sudo cp target/release/auto-wlr-randrctl /usr/local/bin/
    cp files/auto-wlr-randr.service ~/.config/systemd/user/auto-wlr-randr.service
    systemctl --user daemon-reload
+   systemctl --user enable --now auto-wlr-randr.service
+   ```
+
+### From Crates.io
+
+1. Install package:
+
+   ```
+   cargo install auto-wlr-randr
+   ```
+
+2. (optional) Install systemd service:
+
+   Copy `files/auto-wlr-randr.service` file from the repository and run:
+
+   ```bash
+   systemctl --user daemon-reload
+   systemctl --user enable --now auto-wlr-randr.service
    ```
 
 ### Fedora
