@@ -22,7 +22,6 @@ Each profile is defined under the `profile` section with a unique identifier:
 
 ```toml
 [profile.profile_id]
-name = "Human-readable profile name"
 exec = ["command1", "command2"]  # Optional commands to run when profile is activated
 
 [[profile.profile_id.settings]]
@@ -37,9 +36,6 @@ transform = "normal|90|180|270|flipped|flipped-90|flipped-180|flipped-270"
 ## Configuration Keys
 
 ### Profile Section
-
-**name**
-: Human-readable name for the profile
 
 **exec**
 : Array of commands to execute when the profile is activated. These are handled asynchronously.
@@ -75,7 +71,6 @@ flipped-90, flipped-180, flipped-270
 
 ```toml
 [profile.home_office]
-name = "Home Office Setup"
 exec = ["hyprctl dispatch 'hyprexpo:expo' toggle"]
 
 [[profile.home_office.settings]]
@@ -91,7 +86,6 @@ pos = "1920,0"
 scale = 1.0
 
 [profile.laptop_only]
-name = "Laptop Only"
 
 [[profile.laptop_only.settings]]
 output = "eDP-1"

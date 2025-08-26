@@ -13,7 +13,6 @@ fn test_config_load_from_file() {
         .write_str(
             r#"
 [profile.laptop]
-name = "Laptop Only"
 exec = ["notify-send 'Laptop profile activated'"]
 
 [[profile.laptop.settings]]
@@ -24,7 +23,6 @@ pos = "0,0"
 scale = 1.0
 
 [profile.docked]
-name = "Docked Setup"
 exec = ["notify-send 'Docked profile activated'"]
 
 [[profile.docked.settings]]
@@ -48,12 +46,10 @@ scale = 1.0
     assert!(config.profiles.contains_key("docked"));
 
     let laptop_profile = &config.profiles["laptop"];
-    assert_eq!(laptop_profile.name, "Laptop Only");
     assert_eq!(laptop_profile.exec.len(), 1);
     assert_eq!(laptop_profile.settings.len(), 1);
 
     let docked_profile = &config.profiles["docked"];
-    assert_eq!(docked_profile.name, "Docked Setup");
     assert_eq!(docked_profile.exec.len(), 1);
     assert_eq!(docked_profile.settings.len(), 2);
 }
@@ -91,7 +87,6 @@ fn test_find_matching_profile(
     let mut profiles = HashMap::new();
 
     let laptop_profile = Profile {
-        name: "laptop".into(),
         exec: vec![],
         settings: vec![OutputSetting {
             output: "eDP-1".into(),
@@ -142,7 +137,6 @@ fn test_find_matching_profile(
     ];
 
     let docked_profile = Profile {
-        name: "docked".into(),
         exec: vec![],
         settings: docked_settings,
     };
@@ -157,7 +151,6 @@ fn test_find_matching_profile(
 
         let config_content = r#"
 [profile.dummy]
-name = "dummy"
 "#;
         config_file.write_str(config_content).unwrap();
         Config::load_from_file(config_file.path()).expect("Failed to load test config")
@@ -172,8 +165,8 @@ name = "dummy"
             result.is_some(),
             "Expected to find a matching profile but found none"
         );
-        let (profile, _) = result.unwrap();
-        assert_eq!(profile.name, expected_profile_name);
+        let (profile_id, _, _) = result.unwrap();
+        assert_eq!(profile_id, expected_profile_name);
     } else {
         assert!(
             result.is_none(),
@@ -185,7 +178,6 @@ name = "dummy"
 #[test]
 fn test_profile_generate_commands() {
     let profile = Profile {
-        name: "Test Profile".into(),
         exec: vec!["echo 'Profile activated'".into()],
         settings: vec![OutputSetting {
             output: "HDMI-1".into(),
@@ -228,7 +220,6 @@ fn test_reload_config() {
         .write_str(
             r#"
 [profile.laptop]
-name = "Laptop Only"
 "#,
         )
         .unwrap();
@@ -241,9 +232,8 @@ name = "Laptop Only"
         .write_str(
             r#"
 [profile.laptop]
-name = "Laptop Only"
+
 [profile.docked]
-name = "Docked Setup"
 "#,
         )
         .unwrap();

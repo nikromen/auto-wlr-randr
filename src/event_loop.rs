@@ -22,7 +22,7 @@ pub fn handle_command(command: Command, state: &mut WaylandState) -> Result<Stri
         Command::Status => {
             log::info!("Fetching status...");
             let json_output = serde_json::json!({
-                "active_profile": state.active_profile_name.as_deref().unwrap_or("None"),
+                "active_profile": state.active_profile_id.as_deref().unwrap_or("None"),
                 "connected_outputs": state.outputs.values().map(|o| o.to_string()).collect::<Vec<_>>(),
             });
             Ok(serde_json::to_string_pretty(&json_output)?)

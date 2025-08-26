@@ -13,7 +13,7 @@ pub struct WaylandState {
     pub config: Config,
     pub pending_outputs: HashMap<u32, PendingOutputInfo>,
     pub outputs: HashMap<u32, OutputInfo>,
-    pub active_profile_name: Option<String>,
+    pub active_profile_id: Option<String>,
     pub name_map: HashMap<String, String>,
 }
 
@@ -23,7 +23,7 @@ impl WaylandState {
             config,
             pending_outputs: HashMap::new(),
             outputs: HashMap::new(),
-            active_profile_name: None,
+            active_profile_id: None,
             name_map: HashMap::new(),
         }
     }
@@ -109,23 +109,24 @@ impl WaylandState {
 
     pub fn active_profile(
         &mut self,
+        profile_id: &str,
         profile: &Profile,
         name_map: &HashMap<String, String>,
         reload: bool,
     ) {
-        log::debug!("Activating profile: {}", profile.name);
-        if self.active_profile_name.as_ref() != Some(&profile.name) || reload {
+        log::debug!("Activating profile: {}", profile_id);
+        if self.active_profile_id.as_ref() != Some(&profile_id.to_string()) || reload {
             log::info!(
                 "Found matching profile: '{}'. Applying changes.",
-                profile.name
+                profile_id
             );
             let commands = profile.generate_commands(name_map);
             self.run_commands(&commands);
-            self.active_profile_name = Some(profile.name.clone());
+            self.active_profile_id = Some(profile_id.to_string());
         } else {
             log::debug!(
                 "Profile '{}' is already active, skipping activation.",
-                profile.name
+                profile_id
             );
         }
     }
@@ -140,15 +141,17 @@ impl WaylandState {
             })
             .collect();
 
-        if let Some((profile, name_map)) = self.config.find_matching_profile(&connected_outputs) {
+        if let Some((profile_id, profile, name_map)) =
+            self.config.find_matching_profile(&connected_outputs)
+        {
             self.name_map = name_map.clone();
             let profile_copy = profile.clone();
             let name_map_copy = self.name_map.clone();
-            self.active_profile(&profile_copy, &name_map_copy, reload);
+            self.active_profile(&profile_id, &profile_copy, &name_map_copy, reload);
         } else {
-            if self.active_profile_name.is_some() {
+            if self.active_profile_id.is_some() {
                 log::warn!("No matching profile found. Clearing active profile.");
-                self.active_profile_name = None;
+                self.active_profile_id = None;
             }
             let outputs_str = self
                 .outputs
@@ -164,17 +167,17 @@ impl WaylandState {
         }
     }
 
-    pub fn apply_profile_by_name(&mut self, profile_name: &str) -> Result<String> {
+    pub fn apply_profile_by_name(&mut self, profile_id: &str) -> Result<String> {
         let profile = self
             .config
             .profiles
-            .get(profile_name)
-            .ok_or_else(|| anyhow::anyhow!("Profile '{}' not found.", profile_name))?
+            .get(profile_id)
+            .ok_or_else(|| anyhow::anyhow!("Profile '{}' not found.", profile_id))?
             .clone();
 
         let name_map_clone = self.name_map.clone();
-        self.active_profile(&profile, &name_map_clone, false);
-        Ok(format!("Profile '{profile_name}' applied successfully."))
+        self.active_profile(profile_id, &profile, &name_map_clone, false);
+        Ok(format!("Profile '{profile_id}' applied successfully."))
     }
 }
 
