@@ -24,9 +24,11 @@ BuildRequires:  pandoc
 
 Requires:       wlr-randr
 
+# prevent having both
 %if 0%{?git_build}
-Provides:       auto-wlr-randr = %{version}-%{release}
-Obsoletes:      auto-wlr-randr < %{version}-%{release}
+Conflicts:      auto-wlr-randr
+%else
+Conflicts:      auto-wlr-randr-git
 %endif
 
 
