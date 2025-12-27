@@ -1,80 +1,165 @@
+use anyhow::{Context, Result};
+use glob::Pattern;
+use serde::Deserialize;
 use std::fmt;
-use wayland_client::protocol::wl_output;
+use std::process::Command;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct OutputInfo {
-    pub id: u32,
     pub name: String,
-    pub description: String,
+    pub make: Option<String>,
+    pub model: Option<String>,
+    pub serial: Option<String>,
+}
+
+impl OutputInfo {
+    pub fn build_identifier(&self) -> Option<String> {
+        match (&self.make, &self.model, &self.serial) {
+            (Some(make), Some(model), Some(serial)) if !serial.is_empty() => {
+                Some(format!("{make} {model} {serial}"))
+            }
+            (Some(make), Some(model), _) => Some(format!("{make} {model}")),
+            _ => None,
+        }
+    }
+
+    pub fn matches_pattern(&self, pattern: &Pattern) -> bool {
+        pattern.matches(&self.name)
+            || self
+                .build_identifier()
+                .as_deref()
+                .is_some_and(|id| pattern.matches(id))
+            || self
+                .serial
+                .as_deref()
+                .is_some_and(|serial| pattern.matches(serial))
+    }
 }
 
 impl fmt::Display for OutputInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "<ID: #{} (Name: <{}> Manufacturer: <{}>)>",
-            self.id, self.name, self.description
-        )
+        let identifier = self
+            .build_identifier()
+            .unwrap_or_else(|| "unknown".to_string());
+        write!(f, "{} ({})", self.name, identifier)
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct PendingOutputInfo {
-    pub name: Option<String>,
-    pub description: Option<String>,
-    pub proxy: wl_output::WlOutput,
-}
+pub fn get_outputs() -> Result<Vec<OutputInfo>> {
+    let output = Command::new("wlr-randr")
+        .arg("--json")
+        .output()
+        .context("Failed to run wlr-randr")?;
 
-impl fmt::Display for PendingOutputInfo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "<Pending Output (Name: {:?}, Description: {:?})>",
-            self.name, self.description
-        )
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("wlr-randr failed: {stderr}");
     }
-}
 
-pub fn clean_description(description: &str, name: &str) -> String {
-    let mut cleaned_description = description.to_string();
-    let suffix_to_remove = format!(" ({name})");
-    if let Some(stripped) = cleaned_description.strip_suffix(&suffix_to_remove) {
-        cleaned_description = stripped.to_string();
-    }
-    cleaned_description
+    let outputs: Vec<OutputInfo> =
+        serde_json::from_slice(&output.stdout).context("Failed to parse wlr-randr output")?;
+
+    Ok(outputs)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_clean_description_with_suffix() {
-        let name = "HDMI-1";
-        let description = "Dell Monitor (HDMI-1)";
-        let cleaned = clean_description(description, name);
-        assert_eq!(cleaned, "Dell Monitor");
+    fn make_output(
+        name: &str,
+        make: Option<&str>,
+        model: Option<&str>,
+        serial: Option<&str>,
+    ) -> OutputInfo {
+        OutputInfo {
+            name: name.to_string(),
+            make: make.map(String::from),
+            model: model.map(String::from),
+            serial: serial.map(String::from),
+        }
     }
 
     #[test]
-    fn test_clean_description_without_suffix() {
-        let name = "HDMI-1";
-        let description = "Dell Monitor";
-        let cleaned = clean_description(description, name);
-        assert_eq!(cleaned, "Dell Monitor");
-    }
-
-    #[test]
-    fn test_output_info_display() {
-        let output = OutputInfo {
-            id: 42,
-            name: "HDMI-1".to_string(),
-            description: "Dell Monitor".to_string(),
-        };
-        let display_string = format!("{}", output);
-        assert_eq!(
-            display_string,
-            "<ID: #42 (Name: <HDMI-1> Manufacturer: <Dell Monitor>)>"
+    fn test_build_identifier_with_serial() {
+        let output = make_output(
+            "HDMI-1",
+            Some("Dell Inc."),
+            Some("U2718Q"),
+            Some("ABC123456"),
         );
+        assert_eq!(
+            output.build_identifier(),
+            Some("Dell Inc. U2718Q ABC123456".to_string())
+        );
+    }
+
+    #[test]
+    fn test_build_identifier_without_serial() {
+        let output = make_output("HDMI-1", Some("Dell Inc."), Some("U2718Q"), None);
+        assert_eq!(
+            output.build_identifier(),
+            Some("Dell Inc. U2718Q".to_string())
+        );
+    }
+
+    #[test]
+    fn test_build_identifier_missing_make_model() {
+        let output = make_output("HDMI-1", None, None, None);
+        assert_eq!(output.build_identifier(), None);
+    }
+
+    #[test]
+    fn test_display() {
+        let output = make_output("HDMI-1", Some("Dell Inc."), Some("U2718Q"), None);
+        assert_eq!(format!("{output}"), "HDMI-1 (Dell Inc. U2718Q)");
+    }
+
+    #[test]
+    fn test_matches_pattern_name() {
+        let output = make_output(
+            "HDMI-1",
+            Some("Dell Inc."),
+            Some("U2718Q"),
+            Some("ABC123456"),
+        );
+        assert!(output.matches_pattern(&Pattern::new("HDMI-1").unwrap()));
+        assert!(output.matches_pattern(&Pattern::new("HDMI-*").unwrap()));
+    }
+
+    #[test]
+    fn test_matches_pattern_identifier() {
+        let output = make_output(
+            "HDMI-1",
+            Some("Dell Inc."),
+            Some("U2718Q"),
+            Some("ABC123456"),
+        );
+        assert!(output.matches_pattern(&Pattern::new("Dell Inc. U2718Q ABC123456").unwrap()));
+        assert!(output.matches_pattern(&Pattern::new("Dell Inc. * ABC123456").unwrap()));
+    }
+
+    #[test]
+    fn test_matches_pattern_fields() {
+        let output = make_output(
+            "HDMI-1",
+            Some("Dell Inc."),
+            Some("U2718Q"),
+            Some("ABC123456"),
+        );
+        assert!(output.matches_pattern(&Pattern::new("Dell Inc.*").unwrap()));
+        assert!(output.matches_pattern(&Pattern::new("*U2718Q*").unwrap()));
+        assert!(output.matches_pattern(&Pattern::new("ABC123456").unwrap()));
+    }
+
+    #[test]
+    fn test_matches_pattern_no_match() {
+        let output = make_output(
+            "HDMI-1",
+            Some("Dell Inc."),
+            Some("U2718Q"),
+            Some("ABC123456"),
+        );
+        assert!(!output.matches_pattern(&Pattern::new("NonExistent").unwrap()));
     }
 }

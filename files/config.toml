@@ -10,15 +10,28 @@
 #
 # # Apply these settings for the outputs. These settings mirrors the wlr-randr options
 # [[profile.my_profile.settings]]
-# # Could be either output name or manufacturer name. Regex are supported.
-# # This is example of manufacturer full name.
+# # Output patterns are matched against multiple identifiers:
+# #   - Output name: "eDP-1", "HDMI-A-1", "DP-1"
+# #   - Identifier (make, model, optionally serial): "Dell Inc. DELL U2718Q" or "Dell Inc. DELL U2718Q ABC123456"
+#
+# # Glob patterns work on all match targets:
+# #   - "HDMI-*" - match any HDMI output
+# #   - "Dell*" - match any Dell monitor
+# #   - "*ABC*" - match any output with "ABC"
+# #   - "Dell Inc. * ABC123456" - match Dell with specific serial
+# #   - "ABC123456" match monitor with "ABC123456" serial
+# #
+# # To find identifiers for your monitors, run:
+# #   wlr-randr --json | jq '.[] | {name, make, model, serial}'
+# #
+# # This is example of make + model identifier:
 # output = "Dell Inc. DELL XYZ ABC"
 # on = true
 # mode = "1920x1080@144Hz"
 #
 # # This is settings for second monitor/output
 # [[profile.my_profile.settings]]
-# # Output name can be passed directly too, but these may change.
+# # Output name can be passed directly too, but these may change between reboots.
 # output = "DP-11"
 # on = true
 # mode = "1920x1080"
@@ -27,7 +40,7 @@
 #
 # # This is settings for third monitor
 # [[profile.my_profile.settings]]
-# # Pattern matching here is used.
+# # Pattern matching here is used - matches any Dell monitor
 # output = "Dell Inc. *"
 # mode = "1920x1080@144Hz"
 #
@@ -49,8 +62,35 @@
 # [profile.yet_another_profile]
 #
 # [[profile.yet_another_profile.settings]]
-# # Could be either output name or manufacturer name. Regex are supported.
-# # This is example of manufacturer full name.
+# # Could be either output name or identifier. Glob patterns are supported.
+# # This is example of make + model identifier and serial:
 # output = "Dell Inc. DELL XYZ ABC"
 # on = true
 # mode = "1920x1080@144Hz"
+#
+# # Example: Distinguishing two identical monitors using serial numbers
+# # Use this when you have two monitors with the same make and model
+# [profile.dual_identical_monitors]
+#
+# [[profile.dual_identical_monitors.settings]]
+# # Match by serial number alone
+# output = "ABC123456"
+# on = true
+# mode = "2560x1440@60Hz"
+# pos = "0,0"
+#
+# # Alternative: use full identifier with serial
+# [profile.dual_monitors_full]
+#
+# [[profile.dual_monitors_full.settings]]
+# output = "Dell Inc. DELL U2718Q ABC123456"
+# on = true
+# mode = "2560x1440@60Hz"
+# pos = "0,0"
+#
+# [[profile.dual_monitors_full.settings]]
+# # Wildcard here works too
+# output = "Dell Inc. * DEF789012"
+# on = true
+# mode = "2560x1440@60Hz"
+# pos = "2560,0"

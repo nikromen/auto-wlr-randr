@@ -1,6 +1,7 @@
 use assert_fs::TempDir;
 use assert_fs::prelude::*;
-use auto_wlr_randr::config::{Config, OutputData, OutputSetting, Profile};
+use auto_wlr_randr::config::{Config, OutputSetting, Profile};
+use auto_wlr_randr::output::OutputInfo;
 use rstest::*;
 use std::collections::HashMap;
 
@@ -60,27 +61,41 @@ fn test_config_load_nonexistent_file() {
     assert!(result.is_err());
 }
 
+fn make_output(
+    name: &str,
+    make: Option<&str>,
+    model: Option<&str>,
+    serial: Option<&str>,
+) -> OutputInfo {
+    OutputInfo {
+        name: name.to_string(),
+        make: make.map(String::from),
+        model: model.map(String::from),
+        serial: serial.map(String::from),
+    }
+}
+
 #[rstest]
 #[case(
-    vec![OutputData { output_name: "eDP-1".into(), manufacturer: "Laptop Screen".into() }],
+    vec![make_output("eDP-1", Some("Laptop"), Some("Screen"), None)],
     "laptop",
     true
 )]
 #[case(
     vec![
-        OutputData { output_name: "HDMI-1".into(), manufacturer: "Dell Monitor".into() },
-        OutputData { output_name: "eDP-1".into(), manufacturer: "Laptop Screen".into() }
+        make_output("HDMI-1", Some("Dell"), Some("Monitor"), None),
+        make_output("eDP-1", Some("Laptop"), Some("Screen"), None)
     ],
     "docked",
     true
 )]
 #[case(
-    vec![OutputData { output_name: "DP-1".into(), manufacturer: "Unknown Monitor".into() }],
+    vec![make_output("DP-1", Some("Unknown"), Some("Monitor"), None)],
     "",
     false
 )]
 fn test_find_matching_profile(
-    #[case] connected_outputs: Vec<OutputData>,
+    #[case] connected_outputs: Vec<OutputInfo>,
     #[case] expected_profile_name: &str,
     #[case] should_match: bool,
 ) {
@@ -143,16 +158,9 @@ fn test_find_matching_profile(
     profiles.insert("docked".to_string(), docked_profile);
 
     let mut config = Config::load_from_file("config.toml").unwrap_or_else(|_| {
-        use assert_fs::TempDir;
-        use assert_fs::prelude::*;
-
         let temp = TempDir::new().unwrap();
         let config_file = temp.child("config.toml");
-
-        let config_content = r#"
-[profile.dummy]
-"#;
-        config_file.write_str(config_content).unwrap();
+        config_file.write_str("[profile.dummy]\n").unwrap();
         Config::load_from_file(config_file.path()).expect("Failed to load test config")
     });
 
@@ -200,14 +208,14 @@ fn test_profile_generate_commands() {
 
     let commands = profile.generate_commands(&name_map);
 
-    assert_eq!(commands.len(), 2); // wlr-randr command + exec command
+    assert_eq!(commands.len(), 2);
     assert!(commands[0].starts_with("wlr-randr"));
     assert!(commands[0].contains("--output 'HDMI-A-1'"));
-    assert!(commands[0].contains(" --on"));
-    assert!(commands[0].contains(" --mode '1920x1080'"));
-    assert!(commands[0].contains(" --pos '0,0'"));
-    assert!(commands[0].contains(" --scale '1'"));
-    assert!(commands[0].contains(" --adaptive-sync enabled"));
+    assert!(commands[0].contains("--on"));
+    assert!(commands[0].contains("--mode '1920x1080'"));
+    assert!(commands[0].contains("--pos '0,0'"));
+    assert!(commands[0].contains("--scale '1'"));
+    assert!(commands[0].contains("--adaptive-sync enabled"));
     assert_eq!(commands[1], "echo 'Profile activated'");
 }
 
@@ -216,32 +224,17 @@ fn test_reload_config() {
     let temp = TempDir::new().unwrap();
     let config_file = temp.child("config.toml");
 
-    config_file
-        .write_str(
-            r#"
-[profile.laptop]
-"#,
-        )
-        .unwrap();
+    config_file.write_str("[profile.laptop]\n").unwrap();
 
     let mut config = Config::load_from_file(config_file.path()).unwrap();
     assert_eq!(config.profiles.len(), 1);
 
-    // Update the config file
     config_file
-        .write_str(
-            r#"
-[profile.laptop]
-
-[profile.docked]
-"#,
-        )
+        .write_str("[profile.laptop]\n\n[profile.docked]\n")
         .unwrap();
 
-    // Reload the config
     config.reload_config().unwrap();
 
-    // Check that the config has been updated
     assert_eq!(config.profiles.len(), 2);
     assert!(config.profiles.contains_key("docked"));
 }

@@ -47,8 +47,19 @@ Each profile contains one or more `settings` sections, each defining the configu
 specific output:
 
 **output**
-: Name of the output to configure. Can be either the output name (e.g., "DP-1") or the
-manufacturer name (e.g., "Dell Inc. DELL XYZ"). Regular expressions are supported.
+: Pattern to match the output. You can match against any of the following:
+
+- **Output name**: The output name (e.g., "DP-1", "eDP-1", "HDMI-A-1")
+- **Identifier**: `{make} {model} {serial}` or `{make} {model}` if no serial
+  - `"Dell Inc. U2718Q"` or `"Dell Inc. U2718Q ABC123456"` if serial is present
+
+Glob patterns are supported and work on all match targets (e.g., `"HDMI-*"` or `"Dell Inc.*`).
+
+To find identifiers for your outputs, run:
+
+```bash
+wlr-randr --json | jq '.[] | {name, make, model, serial}'
+```
 
 **on**
 : Boolean indicating whether the output should be enabled (true) or disabled (false)
@@ -68,6 +79,8 @@ part is optional.
 flipped-90, flipped-180, flipped-270
 
 # EXAMPLES
+
+## Basic Configuration
 
 ```toml
 [profile.home_office]
@@ -92,6 +105,9 @@ output = "eDP-1"
 on = true
 mode = "1920x1080"
 ```
+
+Check also the example [config.toml](https://github.com/nikromen/auto-wlr-randr/blob/main/files/config.toml)
+for more examples.
 
 # FILES
 

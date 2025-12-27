@@ -21,11 +21,7 @@ fn create_test_state() -> WaylandState {
 
         let temp = TempDir::new().unwrap();
         let config_file = temp.child("config.toml");
-
-        let config_content = r#"
-[profile.test]
-"#;
-        config_file.write_str(config_content).unwrap();
+        config_file.write_str("[profile.test]\n").unwrap();
         Config::load_from_file(config_file.path()).expect("Failed to load test config")
     });
 
@@ -33,13 +29,12 @@ fn create_test_state() -> WaylandState {
 
     let mut state = WaylandState::new(config);
 
-    let output = OutputInfo {
-        id: 1,
+    state.outputs = vec![OutputInfo {
         name: "TEST-1".to_string(),
-        description: "Test Monitor".to_string(),
-    };
-
-    state.outputs.insert(1, output);
+        make: Some("Test Inc.".to_string()),
+        model: Some("TestModel".to_string()),
+        serial: None,
+    }];
 
     state
 }
