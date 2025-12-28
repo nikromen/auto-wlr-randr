@@ -8,7 +8,7 @@
 
 
 Name:           %pkg_name
-Version:        1.0.1
+Version:        1.1.0
 Release:        %autorelease
 Summary:        Automatic display configuration for Wayland compositors
 License:        GPL-3.0-or-later
