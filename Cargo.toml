@@ -1,6 +1,6 @@
 [package]
 name = "auto-wlr-randr"
-version = "1.0.1"
+version = "1.1.0"
 edition = "2024"
 authors = ["Jiri Kyjovsky j1.kyjovsky@gmail.com"]
 description = "Automatic display configuration for Wayland compositors"
