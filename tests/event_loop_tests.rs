@@ -188,6 +188,19 @@ fn test_handle_command_switch_force() {
 }
 
 #[test]
+fn test_evaluate_profiles_clears_active_profile_on_no_match() {
+    let mut profiles = IndexMap::new();
+    profiles.insert("test".to_string(), non_matching_test_profile());
+
+    let mut state = create_test_state(profiles);
+    state.active_profile_id = Some("test".to_string());
+
+    state.evaluate_profiles(false);
+
+    assert_eq!(state.active_profile_id, None);
+}
+
+#[test]
 fn test_evaluate_profiles_updates_name_map_for_same_profile() {
     let mut profiles = IndexMap::new();
     profiles.insert("serial".to_string(), serial_test_profile());

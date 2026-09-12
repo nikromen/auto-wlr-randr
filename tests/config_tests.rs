@@ -62,6 +62,32 @@ fn test_config_load_nonexistent_file() {
     assert!(result.is_err());
 }
 
+#[test]
+fn test_config_load_on_no_match_exec() {
+    let temp = TempDir::new().unwrap();
+    let config_file = temp.child("config.toml");
+
+    config_file
+        .write_str(
+            r#"
+on_no_match_exec = ["notify-send 'No matching profile'"]
+
+[profile.laptop]
+[[profile.laptop.settings]]
+output = "eDP-1"
+"#,
+        )
+        .unwrap();
+
+    let config = Config::load_from_file(config_file.path()).unwrap();
+
+    assert_eq!(config.on_no_match_exec.len(), 1);
+    assert_eq!(
+        config.on_no_match_exec[0],
+        "notify-send 'No matching profile'"
+    );
+}
+
 fn make_output(
     name: &str,
     make: Option<&str>,

@@ -59,7 +59,8 @@ pub fn start_event_loop(config: Config) -> Result<()> {
     log::info!("Event loop started, waiting for events...");
 
     loop {
-        poll.poll(&mut events, None)?;
+        let timeout = state.next_poll_timeout();
+        poll.poll(&mut events, timeout)?;
         for event in events.iter() {
             match event.token() {
                 WAYLAND_EVENT => {
@@ -89,5 +90,6 @@ pub fn start_event_loop(config: Config) -> Result<()> {
                 _ => unreachable!(),
             }
         }
+        state.poll_no_match_hook();
     }
 }

@@ -29,7 +29,10 @@ Define separate profiles for each output count you want to support (for example,
 dual-monitor, and triple-monitor setups).
 
 If no profile matches, the current display configuration is left unchanged and a warning is
-logged.
+logged. If **on_no_match_exec** is set in the configuration file, those commands are run
+after no profile has matched for a short delay (currently 500 ms). The delay is cancelled
+if a profile starts matching before it expires (for example while monitors are still being
+connected to a dock).
 
 Profiles are evaluated in the order they appear in the configuration file until one matches.
 A matching profile configures every currently connected output listed in its **settings**
@@ -42,8 +45,24 @@ profile with the updated output mapping.
 
 # CONFIGURATION FILE FORMAT
 
-The configuration file consists of profile definitions, each with its own settings for
-different outputs.
+The configuration file consists of optional top-level keys and profile definitions, each with
+its own settings for different outputs.
+
+```toml
+on_no_match_exec = ["notify-send 'No matching display profile'"]
+
+[profile.profile_id]
+# ...
+```
+
+## Top-Level Keys
+
+**on_no_match_exec**
+: Array of shell commands to execute when no profile matches the currently connected outputs.
+Commands are run asynchronously via **sh**(1), using the same semantics as profile **exec**.
+Execution is delayed briefly so transient output changes (such as docking monitors one at a
+time) do not trigger the hook prematurely. The hook is not run again for the same output
+configuration until outputs change or the configuration is reloaded.
 
 ## Profile Definition
 

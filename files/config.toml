@@ -1,3 +1,6 @@
+# # Optional: run shell commands when no profile matches connected outputs
+# # on_no_match_exec = ["notify-send 'auto-wlr-randr: no profile for current outputs'"]
+#
 # # Specify your profile under profile.<profile_name>
 # # If all outputs in the profile matches the reality, the profile is used.
 # [profile.my_profile]
