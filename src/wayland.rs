@@ -122,6 +122,7 @@ impl WaylandState {
             .ok_or_else(|| anyhow::anyhow!("Profile '{profile_id}' not found."))?
             .clone();
 
+        self.name_map = profile.resolve_name_map(&self.outputs);
         self.activate_profile(profile_id, &profile, false);
         Ok(format!("Profile '{profile_id}' applied successfully."))
     }

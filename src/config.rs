@@ -145,6 +145,79 @@ impl Profile {
 
         Some(args)
     }
+
+    pub fn match_outputs(
+        &self,
+        connected_outputs: &[OutputInfo],
+    ) -> Option<HashMap<String, String>> {
+        if self.settings.len() != connected_outputs.len() {
+            return None;
+        }
+
+        if self.settings.is_empty() {
+            return if connected_outputs.is_empty() {
+                Some(HashMap::new())
+            } else {
+                None
+            };
+        }
+
+        let mut used_outputs = vec![false; connected_outputs.len()];
+        let mut output_name_map = HashMap::with_capacity(self.settings.len());
+
+        for setting in &self.settings {
+            let pattern = match Pattern::new(&setting.output) {
+                Ok(p) => p,
+                Err(e) => {
+                    log::error!("Invalid output pattern '{}': {e}", setting.output);
+                    return None;
+                }
+            };
+
+            let found = connected_outputs
+                .iter()
+                .enumerate()
+                .find(|(i, out)| !used_outputs[*i] && out.matches_pattern(&pattern));
+
+            if let Some((idx, matched)) = found {
+                used_outputs[idx] = true;
+                output_name_map.insert(setting.output.clone(), matched.name.clone());
+            } else {
+                return None;
+            }
+        }
+
+        Some(output_name_map)
+    }
+
+    /// Resolve output patterns to connector names for manual profile application.
+    /// Unlike `match_outputs`, this does not require an exact output count match.
+    /// serial:ABCD1234 -> HDMI-A-1
+    pub fn resolve_name_map(&self, connected_outputs: &[OutputInfo]) -> HashMap<String, String> {
+        let mut used_outputs = vec![false; connected_outputs.len()];
+        let mut output_name_map = HashMap::new();
+
+        for setting in &self.settings {
+            let pattern = match Pattern::new(&setting.output) {
+                Ok(p) => p,
+                Err(e) => {
+                    log::warn!("Invalid output pattern '{}': {e}", setting.output);
+                    continue;
+                }
+            };
+
+            if let Some((idx, matched)) = connected_outputs
+                .iter()
+                .enumerate()
+                .find(|(i, out)| !used_outputs[*i] && out.matches_pattern(&pattern))
+            {
+                used_outputs[idx] = true;
+                output_name_map.insert(setting.output.clone(), matched.name.clone());
+            }
+        }
+
+        output_name_map
+    }
 }
 
 impl Config {
@@ -173,55 +246,11 @@ impl Config {
         &self,
         connected_outputs: &[OutputInfo],
     ) -> Option<(&str, &Profile, HashMap<String, String>)> {
-        'profile_loop: for (profile_id, profile) in &self.profiles {
-            if profile.settings.len() != connected_outputs.len() {
-                continue;
+        for (profile_id, profile) in &self.profiles {
+            if let Some(name_map) = profile.match_outputs(connected_outputs) {
+                log::debug!("Profile '{profile_id}' matches current outputs");
+                return Some((profile_id, profile, name_map));
             }
-
-            if profile.settings.is_empty() {
-                return if connected_outputs.is_empty() {
-                    Some((profile_id, profile, HashMap::new()))
-                } else {
-                    None
-                };
-            }
-
-            let mut used_outputs = vec![false; connected_outputs.len()];
-            let mut output_name_map = HashMap::with_capacity(profile.settings.len());
-
-            for setting in &profile.settings {
-                let pattern = match Pattern::new(&setting.output) {
-                    Ok(p) => p,
-                    Err(e) => {
-                        log::error!("Invalid output pattern '{}': {e}", setting.output);
-                        continue 'profile_loop;
-                    }
-                };
-
-                let found = connected_outputs
-                    .iter()
-                    .enumerate()
-                    .find(|(i, out)| !used_outputs[*i] && out.matches_pattern(&pattern));
-
-                log::debug!(
-                    "Pattern '{}' against outputs: {:?} => {:?}",
-                    setting.output,
-                    connected_outputs
-                        .iter()
-                        .map(|o| o.to_string())
-                        .collect::<Vec<_>>(),
-                    found.map(|(i, _)| i)
-                );
-
-                if let Some((idx, matched)) = found {
-                    used_outputs[idx] = true;
-                    output_name_map.insert(setting.output.clone(), matched.name.clone());
-                } else {
-                    continue 'profile_loop;
-                }
-            }
-
-            return Some((profile_id, profile, output_name_map));
         }
 
         None
