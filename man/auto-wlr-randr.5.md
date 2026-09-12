@@ -31,8 +31,10 @@ dual-monitor, and triple-monitor setups).
 If no profile matches, the current display configuration is left unchanged and a warning is
 logged.
 
-Profiles are evaluated until one matches. A matching profile configures every currently
-connected output listed in its **settings** section.
+Profiles are evaluated in the order they appear in the configuration file until one matches.
+A matching profile configures every currently connected output listed in its **settings**
+section. When multiple profiles could match the same output configuration, the first one
+in the file is used.
 
 # CONFIGURATION FILE FORMAT
 

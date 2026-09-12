@@ -3,10 +3,10 @@ use auto_wlr_randr::event_loop::handle_command;
 use auto_wlr_randr::ipc::Command;
 use auto_wlr_randr::output::OutputInfo;
 use auto_wlr_randr::wayland::WaylandState;
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 fn create_test_state() -> WaylandState {
-    let mut profiles = HashMap::new();
+    let mut profiles = IndexMap::new();
     profiles.insert(
         "test".to_string(),
         Profile {
