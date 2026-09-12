@@ -120,4 +120,4 @@ auto-wlr-randrctl switch home-office
 
 ## Note
 
-The functionality and interface is inspired by [kanshi](https://gitlab.freedesktop.org/emersion/kanshi), but differs in that it uses wlr-randr instead of implementing the protocol directly. This approach was chosen because when this tool was created as a proof of concept, the wlr-randr protocol implementation was more advanced than the implementation of kanshi. Additionally, auto-wlr-randr uses TOML configuration files which have library support across various programming languages, making it easier to develop frontends for it, which was needed for the [wayrandr](https://github.com/nikromen/wayrandr) project.
+Inspired by [kanshi](https://gitlab.freedesktop.org/emersion/kanshi). auto-wlr-randr applies profiles through `wlr-randr` rather than the protocol directly, uses TOML configuration, and matches profiles by exact output count (see `man 5 auto-wlr-randr`). TOML and auto-wlr-randrctl are there to support tooling such as [wayrandr](https://github.com/nikromen/wayrandr).
