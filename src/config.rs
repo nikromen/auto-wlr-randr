@@ -64,22 +64,23 @@ pub struct Config {
 }
 
 impl Profile {
-    pub fn generate_commands(&self, output_name_map: &HashMap<String, String>) -> Vec<String> {
-        let mut commands = Vec::with_capacity(self.exec.len() + 1);
-
+    pub fn generate_wlr_randr_args(
+        &self,
+        output_name_map: &HashMap<String, String>,
+    ) -> Option<Vec<String>> {
         if self.settings.is_empty() {
-            commands.extend(self.exec.iter().cloned());
-            return commands;
+            return None;
         }
 
-        let mut args = vec!["wlr-randr".to_string()];
+        let mut args = Vec::new();
 
         for setting in &self.settings {
             let output_name = output_name_map
                 .get(&setting.output)
                 .unwrap_or(&setting.output);
 
-            args.push(format!("--output '{output_name}'"));
+            args.push("--output".to_string());
+            args.push(output_name.clone());
 
             if let Some(on) = setting.on {
                 if on {
@@ -90,7 +91,8 @@ impl Profile {
             }
 
             if let Some(mode) = &setting.mode {
-                args.push(format!("--mode '{mode}'"));
+                args.push("--mode".to_string());
+                args.push(mode.clone());
             }
 
             if setting.preferred {
@@ -98,42 +100,49 @@ impl Profile {
             }
 
             if let Some(pos) = &setting.pos {
-                args.push(format!("--pos '{pos}'"));
+                args.push("--pos".to_string());
+                args.push(pos.clone());
             }
 
             if let Some(left_of) = &setting.left_of {
-                args.push(format!("--left-of '{left_of}'"));
+                args.push("--left-of".to_string());
+                args.push(left_of.clone());
             }
             if let Some(right_of) = &setting.right_of {
-                args.push(format!("--right-of '{right_of}'"));
+                args.push("--right-of".to_string());
+                args.push(right_of.clone());
             }
             if let Some(above) = &setting.above {
-                args.push(format!("--above '{above}'"));
+                args.push("--above".to_string());
+                args.push(above.clone());
             }
             if let Some(below) = &setting.below {
-                args.push(format!("--below '{below}'"));
+                args.push("--below".to_string());
+                args.push(below.clone());
             }
 
             if let Some(transform) = &setting.transform {
-                args.push(format!("--transform '{transform}'"));
+                args.push("--transform".to_string());
+                args.push(transform.clone());
             }
 
             if let Some(scale) = setting.scale {
-                args.push(format!("--scale '{scale}'"));
+                args.push("--scale".to_string());
+                args.push(scale.to_string());
             }
 
             if let Some(adaptive_sync) = setting.adaptive_sync {
                 if adaptive_sync {
-                    args.push("--adaptive-sync enabled".to_string());
+                    args.push("--adaptive-sync".to_string());
+                    args.push("enabled".to_string());
                 } else {
-                    args.push("--adaptive-sync disabled".to_string());
+                    args.push("--adaptive-sync".to_string());
+                    args.push("disabled".to_string());
                 }
             }
         }
 
-        commands.push(args.join(" "));
-        commands.extend(self.exec.iter().cloned());
-        commands
+        Some(args)
     }
 }
 
@@ -223,7 +232,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_generate_commands_with_settings() {
+    fn test_generate_wlr_randr_args_with_settings() {
         let profile = Profile {
             exec: vec!["echo 'done'".into()],
             settings: vec![OutputSetting {
@@ -245,20 +254,28 @@ mod tests {
         let mut name_map = HashMap::new();
         name_map.insert("HDMI-1".to_string(), "HDMI-A-1".to_string());
 
-        let commands = profile.generate_commands(&name_map);
+        let args = profile.generate_wlr_randr_args(&name_map).unwrap();
 
-        assert_eq!(commands.len(), 2);
-        assert!(commands[0].starts_with("wlr-randr"));
-        assert!(commands[0].contains("--output 'HDMI-A-1'"));
-        assert!(commands[0].contains("--on"));
-        assert!(commands[0].contains("--mode '1920x1080'"));
-        assert!(commands[0].contains("--scale '1'"));
-        assert!(commands[0].contains("--adaptive-sync enabled"));
-        assert_eq!(commands[1], "echo 'done'");
+        assert_eq!(
+            args,
+            vec![
+                "--output".to_string(),
+                "HDMI-A-1".to_string(),
+                "--on".to_string(),
+                "--mode".to_string(),
+                "1920x1080".to_string(),
+                "--pos".to_string(),
+                "0,0".to_string(),
+                "--scale".to_string(),
+                "1".to_string(),
+                "--adaptive-sync".to_string(),
+                "enabled".to_string(),
+            ]
+        );
     }
 
     #[test]
-    fn test_generate_commands_omits_unset_on_and_adaptive_sync() {
+    fn test_generate_wlr_randr_args_omits_unset_on_and_adaptive_sync() {
         let profile = Profile {
             exec: vec![],
             settings: vec![OutputSetting {
@@ -277,23 +294,20 @@ mod tests {
             }],
         };
 
-        let commands = profile.generate_commands(&HashMap::new());
+        let args = profile.generate_wlr_randr_args(&HashMap::new()).unwrap();
 
-        assert_eq!(commands.len(), 1);
-        assert!(!commands[0].contains("--on"));
-        assert!(!commands[0].contains("--off"));
-        assert!(!commands[0].contains("--adaptive-sync"));
+        assert!(!args.contains(&"--on".to_string()));
+        assert!(!args.contains(&"--off".to_string()));
+        assert!(!args.iter().any(|arg| arg == "--adaptive-sync"));
     }
 
     #[test]
-    fn test_generate_commands_empty_settings() {
+    fn test_generate_wlr_randr_args_empty_settings() {
         let profile = Profile {
             exec: vec!["echo 'test'".into()],
             settings: vec![],
         };
 
-        let commands = profile.generate_commands(&HashMap::new());
-        assert_eq!(commands.len(), 1);
-        assert_eq!(commands[0], "echo 'test'");
+        assert!(profile.generate_wlr_randr_args(&HashMap::new()).is_none());
     }
 }

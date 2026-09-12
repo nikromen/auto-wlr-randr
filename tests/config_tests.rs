@@ -184,7 +184,7 @@ fn test_find_matching_profile(
 }
 
 #[test]
-fn test_profile_generate_commands() {
+fn test_profile_generate_wlr_randr_args() {
     let profile = Profile {
         exec: vec!["echo 'Profile activated'".into()],
         settings: vec![OutputSetting {
@@ -206,17 +206,19 @@ fn test_profile_generate_commands() {
     let mut name_map = HashMap::new();
     name_map.insert("HDMI-1".to_string(), "HDMI-A-1".to_string());
 
-    let commands = profile.generate_commands(&name_map);
+    let args = profile.generate_wlr_randr_args(&name_map).unwrap();
 
-    assert_eq!(commands.len(), 2);
-    assert!(commands[0].starts_with("wlr-randr"));
-    assert!(commands[0].contains("--output 'HDMI-A-1'"));
-    assert!(commands[0].contains("--on"));
-    assert!(commands[0].contains("--mode '1920x1080'"));
-    assert!(commands[0].contains("--pos '0,0'"));
-    assert!(commands[0].contains("--scale '1'"));
-    assert!(commands[0].contains("--adaptive-sync enabled"));
-    assert_eq!(commands[1], "echo 'Profile activated'");
+    assert!(args.contains(&"--output".to_string()));
+    assert!(args.contains(&"HDMI-A-1".to_string()));
+    assert!(args.contains(&"--on".to_string()));
+    assert!(args.contains(&"--mode".to_string()));
+    assert!(args.contains(&"1920x1080".to_string()));
+    assert!(args.contains(&"--pos".to_string()));
+    assert!(args.contains(&"0,0".to_string()));
+    assert!(args.contains(&"--scale".to_string()));
+    assert!(args.contains(&"1".to_string()));
+    assert!(args.contains(&"--adaptive-sync".to_string()));
+    assert!(args.contains(&"enabled".to_string()));
 }
 
 #[test]

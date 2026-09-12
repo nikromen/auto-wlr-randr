@@ -44,7 +44,14 @@ impl WaylandState {
         }
     }
 
-    fn run_commands(commands: &[String]) {
+    fn run_wlr_randr(args: &[String]) {
+        log::debug!("Executing wlr-randr with args: {args:?}");
+        if let Err(e) = std::process::Command::new("wlr-randr").args(args).spawn() {
+            log::error!("Failed to execute wlr-randr: {e}");
+        }
+    }
+
+    fn run_exec(commands: &[String]) {
         for command in commands {
             if command.is_empty() {
                 log::warn!("Encountered an empty command, skipping.");
@@ -69,8 +76,10 @@ impl WaylandState {
         }
 
         log::info!("Activating profile: '{profile_id}'");
-        let commands = profile.generate_commands(&self.name_map);
-        Self::run_commands(&commands);
+        if let Some(args) = profile.generate_wlr_randr_args(&self.name_map) {
+            Self::run_wlr_randr(&args);
+        }
+        Self::run_exec(&profile.exec);
         self.active_profile_id = Some(profile_id.to_string());
     }
 
