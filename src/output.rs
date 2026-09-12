@@ -4,7 +4,7 @@ use serde::Deserialize;
 use std::fmt;
 use std::process::Command;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 pub struct OutputInfo {
     pub name: String,
     pub make: Option<String>,

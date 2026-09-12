@@ -57,6 +57,9 @@ pub struct Profile {
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
+    #[serde(default)]
+    pub on_no_match_exec: Vec<String>,
+
     #[serde(rename = "profile")]
     pub profiles: IndexMap<String, Profile>,
 
