@@ -2,6 +2,7 @@ use assert_fs::TempDir;
 use assert_fs::prelude::*;
 use auto_wlr_randr::config::{Config, OutputSetting, Profile};
 use auto_wlr_randr::output::OutputInfo;
+use indexmap::IndexMap;
 use rstest::*;
 use std::collections::HashMap;
 
@@ -99,7 +100,7 @@ fn test_find_matching_profile(
     #[case] expected_profile_name: &str,
     #[case] should_match: bool,
 ) {
-    let mut profiles = HashMap::new();
+    let mut profiles = IndexMap::new();
 
     let laptop_profile = Profile {
         exec: vec![],
@@ -219,6 +220,50 @@ fn test_profile_generate_wlr_randr_args() {
     assert!(args.contains(&"1".to_string()));
     assert!(args.contains(&"--adaptive-sync".to_string()));
     assert!(args.contains(&"enabled".to_string()));
+}
+
+#[test]
+fn test_profile_order_from_config_file() {
+    let temp = TempDir::new().unwrap();
+    let config_file = temp.child("config.toml");
+
+    config_file
+        .write_str(
+            r#"
+[profile.first]
+[[profile.first.settings]]
+output = "eDP-1"
+
+[profile.second]
+[[profile.second.settings]]
+output = "eDP-1"
+"#,
+        )
+        .unwrap();
+
+    let config = Config::load_from_file(config_file.path()).unwrap();
+    let outputs = vec![make_output("eDP-1", Some("Laptop"), Some("Screen"), None)];
+
+    let (profile_id, _, _) = config.find_matching_profile(&outputs).unwrap();
+    assert_eq!(profile_id, "first");
+
+    config_file
+        .write_str(
+            r#"
+[profile.second]
+[[profile.second.settings]]
+output = "eDP-1"
+
+[profile.first]
+[[profile.first.settings]]
+output = "eDP-1"
+"#,
+        )
+        .unwrap();
+
+    let config = Config::load_from_file(config_file.path()).unwrap();
+    let (profile_id, _, _) = config.find_matching_profile(&outputs).unwrap();
+    assert_eq!(profile_id, "second");
 }
 
 #[test]

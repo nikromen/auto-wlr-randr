@@ -1,6 +1,7 @@
 use crate::output::OutputInfo;
 use anyhow::{Context, Result};
 use glob::Pattern;
+use indexmap::IndexMap;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
@@ -57,7 +58,7 @@ pub struct Profile {
 #[serde(deny_unknown_fields)]
 pub struct Config {
     #[serde(rename = "profile")]
-    pub profiles: HashMap<String, Profile>,
+    pub profiles: IndexMap<String, Profile>,
 
     #[serde(skip)]
     config_path: String,
