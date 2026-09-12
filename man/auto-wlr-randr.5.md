@@ -36,6 +36,10 @@ A matching profile configures every currently connected output listed in its **s
 section. When multiple profiles could match the same output configuration, the first one
 in the file is used.
 
+If the same profile remains matched after outputs change (for example, swapping one monitor
+for another while the output count stays the same), **auto-wlr-randr** re-applies that
+profile with the updated output mapping.
+
 # CONFIGURATION FILE FORMAT
 
 The configuration file consists of profile definitions, each with its own settings for

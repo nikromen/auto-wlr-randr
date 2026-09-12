@@ -4,6 +4,7 @@ use auto_wlr_randr::ipc::Command;
 use auto_wlr_randr::output::OutputInfo;
 use auto_wlr_randr::wayland::WaylandState;
 use indexmap::IndexMap;
+use std::collections::HashMap;
 
 fn make_test_output() -> OutputInfo {
     OutputInfo {
@@ -56,6 +57,35 @@ fn non_matching_test_profile() -> Profile {
     Profile {
         exec: vec![],
         settings: vec![],
+    }
+}
+
+fn serial_test_profile() -> Profile {
+    Profile {
+        exec: vec![],
+        settings: vec![OutputSetting {
+            output: "ABC".into(),
+            on: None,
+            mode: None,
+            preferred: false,
+            pos: None,
+            left_of: None,
+            right_of: None,
+            above: None,
+            below: None,
+            transform: None,
+            scale: None,
+            adaptive_sync: None,
+        }],
+    }
+}
+
+fn make_output_with_serial(name: &str, serial: &str) -> OutputInfo {
+    OutputInfo {
+        name: name.to_string(),
+        make: Some("Test Inc.".to_string()),
+        model: Some("TestModel".to_string()),
+        serial: Some(serial.to_string()),
     }
 }
 
@@ -155,4 +185,47 @@ fn test_handle_command_switch_force() {
 
     assert!(result.is_ok());
     assert_eq!(state.active_profile_id, Some("empty".to_string()));
+}
+
+#[test]
+fn test_evaluate_profiles_updates_name_map_for_same_profile() {
+    let mut profiles = IndexMap::new();
+    profiles.insert("serial".to_string(), serial_test_profile());
+
+    let mut state = create_test_state(profiles);
+    state.outputs = vec![make_output_with_serial("DP-1", "ABC")];
+
+    state.evaluate_profiles(false);
+    assert_eq!(state.active_profile_id, Some("serial".to_string()));
+    assert_eq!(state.name_map.get("ABC"), Some(&"DP-1".to_string()));
+
+    state.outputs = vec![make_output_with_serial("HDMI-1", "ABC")];
+    state.evaluate_profiles(false);
+
+    assert_eq!(state.active_profile_id, Some("serial".to_string()));
+    assert_eq!(state.name_map.get("ABC"), Some(&"HDMI-1".to_string()));
+}
+
+#[test]
+fn test_apply_profile_by_name_reapplies_when_name_map_changes() {
+    let mut profiles = IndexMap::new();
+    profiles.insert("serial".to_string(), serial_test_profile());
+
+    let mut state = create_test_state(profiles);
+    state.outputs = vec![make_output_with_serial("DP-1", "ABC")];
+    state.active_profile_id = Some("serial".to_string());
+    state.name_map = HashMap::from([("ABC".to_string(), "DP-1".to_string())]);
+
+    state.outputs = vec![make_output_with_serial("HDMI-1", "ABC")];
+
+    let result = handle_command(
+        Command::Switch {
+            profile: "serial".to_string(),
+            force: false,
+        },
+        &mut state,
+    );
+
+    assert!(result.is_ok());
+    assert_eq!(state.name_map.get("ABC"), Some(&"HDMI-1".to_string()));
 }
