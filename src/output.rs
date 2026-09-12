@@ -1,15 +1,26 @@
 use anyhow::{Context, Result};
 use glob::Pattern;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::process::Command;
 
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct OutputInfo {
     pub name: String,
     pub make: Option<String>,
     pub model: Option<String>,
     pub serial: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct WlrRandrOutput {
+    name: String,
+    #[serde(default)]
+    make: String,
+    #[serde(default)]
+    model: String,
+    #[serde(default)]
+    serial: String,
 }
 
 impl OutputInfo {
@@ -36,6 +47,17 @@ impl OutputInfo {
     }
 }
 
+impl WlrRandrOutput {
+    fn to_output_info(&self) -> OutputInfo {
+        OutputInfo {
+            name: self.name.clone(),
+            make: optional_string(&self.make),
+            model: optional_string(&self.model),
+            serial: optional_string(&self.serial),
+        }
+    }
+}
+
 impl fmt::Display for OutputInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let identifier = self
@@ -45,7 +67,15 @@ impl fmt::Display for OutputInfo {
     }
 }
 
-pub fn get_outputs() -> Result<Vec<OutputInfo>> {
+fn optional_string(value: &str) -> Option<String> {
+    if value.is_empty() {
+        None
+    } else {
+        Some(value.to_string())
+    }
+}
+
+fn run_wlr_randr_json() -> Result<Vec<u8>> {
     let output = Command::new("wlr-randr")
         .arg("--json")
         .output()
@@ -56,10 +86,19 @@ pub fn get_outputs() -> Result<Vec<OutputInfo>> {
         anyhow::bail!("wlr-randr failed: {stderr}");
     }
 
-    let outputs: Vec<OutputInfo> =
-        serde_json::from_slice(&output.stdout).context("Failed to parse wlr-randr output")?;
+    Ok(output.stdout)
+}
 
-    Ok(outputs)
+fn parse_wlr_randr_outputs(stdout: &[u8]) -> Result<Vec<WlrRandrOutput>> {
+    serde_json::from_slice(stdout).context("Failed to parse wlr-randr output")
+}
+
+pub fn get_outputs() -> Result<Vec<OutputInfo>> {
+    let stdout = run_wlr_randr_json()?;
+    Ok(parse_wlr_randr_outputs(&stdout)?
+        .iter()
+        .map(WlrRandrOutput::to_output_info)
+        .collect())
 }
 
 #[cfg(test)]
@@ -107,6 +146,28 @@ mod tests {
     fn test_build_identifier_missing_make_model() {
         let output = make_output("HDMI-1", None, None, None);
         assert_eq!(output.build_identifier(), None);
+    }
+
+    #[test]
+    fn test_wlr_randr_output_normalizes_empty_edid_fields() {
+        let output: WlrRandrOutput = serde_json::from_str(
+            r#"{
+                "name": "HDMI-A-1",
+                "active": false,
+                "make": "",
+                "model": "",
+                "serial": ""
+            }"#,
+        )
+        .unwrap();
+
+        let info = output.to_output_info();
+
+        assert_eq!(info.name, "HDMI-A-1");
+        assert!(info.make.is_none());
+        assert!(info.model.is_none());
+        assert!(info.serial.is_none());
+        assert!(info.build_identifier().is_none());
     }
 
     #[test]

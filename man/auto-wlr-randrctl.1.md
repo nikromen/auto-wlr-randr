@@ -32,6 +32,18 @@ not match, the command fails and no configuration is applied. With **--force**, 
 applied regardless of whether it matches current outputs; output patterns are still resolved
 where possible.
 
+**validate** **-c** _CONFIG_
+: Validate a configuration file without starting the daemon or changing display settings.
+Checks TOML structure, glob patterns, transform values, and other static issues. Warnings are
+printed for suspicious but valid configurations. Exits with status 1 if validation errors are
+found.
+
+**dry-run** **-c** _CONFIG_
+: Show what would be applied for the currently connected outputs. Prints JSON with the matched
+profile, resolved output names, **wlr-randr** arguments, and profile **exec** commands. If no
+profile matches, includes **on_no_match_exec** from the configuration. Does not require a
+running daemon.
+
 **-h, --help**
 : Print help information
 
@@ -51,6 +63,12 @@ where possible.
 
 **auto-wlr-randrctl switch home-office --force**
 : Switch to the "home-office" profile even if it does not match current outputs
+
+**auto-wlr-randrctl validate -c ~/.config/auto-wlr-randr/config.toml**
+: Validate a configuration file
+
+**auto-wlr-randrctl dry-run -c ~/.config/auto-wlr-randr/config.toml**
+: Preview profile matching and commands for current outputs
 
 # SEE ALSO
 
