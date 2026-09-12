@@ -1,99 +1,80 @@
-# # Optional: run shell commands when no profile matches connected outputs
-# # on_no_match_exec = ["notify-send 'auto-wlr-randr: no profile for current outputs'"]
+# Example configuration for auto-wlr-randr.
 #
-# # Specify your profile under profile.<profile_name>
-# # If all outputs in the profile matches the reality, the profile is used.
-# [profile.my_profile]
+# Copy to ~/.config/auto-wlr-randr/config.toml and edit the output patterns for your
+# monitors. To find identifiers, run:
+#   wlr-randr --json | jq '.[] | {name, make, model, serial}'
 #
-# # Run these commands. These are handled asynchronously
-# exec = [
-# "echo 'hello from auto-wlr-randr!'",
-# "hyprctl dispatch 'hyprexpo:expo' toggle"
-# ]
+# Output patterns match against:
+#   - connector name (e.g. "HDMI-A-1", "DP-2")
+#   - make + model identifier (e.g. "Dell Inc. DELL U2718Q")
+#   - make + model + serial (e.g. "Dell Inc. DELL U2718Q ABC123456")
+#   - serial alone (e.g. "ABC123456")
 #
-# # Apply these settings for the outputs. These settings mirrors the wlr-randr options
-# [[profile.my_profile.settings]]
-# # Output patterns are matched against multiple identifiers:
-# #   - Output name: "eDP-1", "HDMI-A-1", "DP-1"
-# #   - Identifier (make, model, optionally serial): "Dell Inc. DELL U2718Q" or "Dell Inc. DELL U2718Q ABC123456"
+# Glob patterns are supported (e.g. "HDMI-*", "Dell Inc. *", "*ABC*").
 #
-# # Glob patterns work on all match targets:
-# #   - "HDMI-*" - match any HDMI output
-# #   - "Dell*" - match any Dell monitor
-# #   - "*ABC*" - match any output with "ABC"
-# #   - "Dell Inc. * ABC123456" - match Dell with specific serial
-# #   - "ABC123456" match monitor with "ABC123456" serial
-# #
-# # To find identifiers for your monitors, run:
-# #   wlr-randr --json | jq '.[] | {name, make, model, serial}'
-# #
-# # This is example of make + model identifier:
-# output = "Dell Inc. DELL XYZ ABC"
-# on = true
-# mode = "1920x1080@144Hz"
+# A profile matches only when the number of connected outputs equals the number of
+# settings entries and every pattern matches exactly one output. Profiles are tried in
+# file order; the first match wins.
 #
-# # This is settings for second monitor/output
-# [[profile.my_profile.settings]]
-# # Output name can be passed directly too, but these may change between reboots.
-# output = "DP-11"
-# on = true
-# mode = "1920x1080"
-# pos = "1920,0"
-# scale = 1.0
-#
-# # This is settings for third monitor
-# [[profile.my_profile.settings]]
-# # Pattern matching here is used - matches any Dell monitor
-# output = "Dell Inc. *"
-# mode = "1920x1080@144Hz"
-#
-# # This is another profile
-# [profile.another_profile]
-#
-# # We could only run a command without using wlr-randr if you want, just skip the settings
-# # and only put output there that should match. If you want to execute commands in sequence,
-# # use single command and separate it with semicolon
-# exec = ["echo 'hello from auto-wlr-randr!'; hyprctl dispatch 'hyprexpo:expo' toggle"]
-#
-# [[profile.another_profile.settings]]
-# output = "Some Company *"
-#
-# [[profile.another_profile.settings]]
-# output = "Other Monitor"
-#
-# # Or vice versa we could leave exec empty and just set up wlr-randr
-# [profile.yet_another_profile]
-#
-# [[profile.yet_another_profile.settings]]
-# # Could be either output name or identifier. Glob patterns are supported.
-# # This is example of make + model identifier and serial:
-# output = "Dell Inc. DELL XYZ ABC"
-# on = true
-# mode = "1920x1080@144Hz"
-#
-# # Example: Distinguishing two identical monitors using serial numbers
-# # Use this when you have two monitors with the same make and model
-# [profile.dual_identical_monitors]
-#
-# [[profile.dual_identical_monitors.settings]]
-# # Match by serial number alone
-# output = "ABC123456"
-# on = true
-# mode = "2560x1440@60Hz"
-# pos = "0,0"
-#
-# # Alternative: use full identifier with serial
-# [profile.dual_monitors_full]
-#
-# [[profile.dual_monitors_full.settings]]
-# output = "Dell Inc. DELL U2718Q ABC123456"
-# on = true
-# mode = "2560x1440@60Hz"
-# pos = "0,0"
-#
-# [[profile.dual_monitors_full.settings]]
-# # Wildcard here works too
-# output = "Dell Inc. * DEF789012"
-# on = true
-# mode = "2560x1440@60Hz"
-# pos = "2560,0"
+# Validate this file without starting the daemon:
+#   auto-wlr-randrctl validate -c /usr/share/auto-wlr-randr/config.toml.example
+
+# Optional: run when no profile matches (after a short delay)
+# on_no_match_exec = ["notify-send 'auto-wlr-randr: no profile for current outputs'"]
+
+# Laptop only (one built-in or single output)
+[profile.laptop_only]
+
+[[profile.laptop_only.settings]]
+# Replace with your laptop panel pattern, e.g. "eDP-*" or "BOE 0xABC"
+output = "EXAMPLE-LAPTOP-*"
+on = true
+preferred = true
+
+# Dual monitor setup
+[profile.dual_monitor]
+
+exec = [
+    "echo 'auto-wlr-randr: activated dual_monitor profile'",
+]
+
+[[profile.dual_monitor.settings]]
+# Primary monitor — identifier with make and model:
+output = "EXAMPLE-COMPANY MODEL-ONE *"
+on = true
+mode = "2560x1440"
+pos = "0,0"
+scale = 1.0
+
+[[profile.dual_monitor.settings]]
+# Secondary monitor — connector name (may change between reboots):
+output = "EXAMPLE-HDMI-*"
+on = true
+mode = "1920x1080"
+pos = "2560,0"
+
+# Two identical monitors distinguished by serial number
+[profile.dual_identical_monitors]
+
+[[profile.dual_identical_monitors.settings]]
+output = "EXAMPLE-SERIAL-111111"
+on = true
+mode = "2560x1440@60Hz"
+pos = "0,0"
+
+[[profile.dual_identical_monitors.settings]]
+output = "EXAMPLE-SERIAL-222222"
+on = true
+mode = "2560x1440@60Hz"
+pos = "2560,0"
+
+# Profile with exec only (no wlr-randr settings) — patterns still must match all outputs
+[profile.exec_only]
+
+exec = ["echo 'hello from auto-wlr-randr'"]
+
+[[profile.exec_only.settings]]
+output = "EXAMPLE-DOCK-*"
+
+[[profile.exec_only.settings]]
+output = "EXAMPLE-PROJECTOR-*"
