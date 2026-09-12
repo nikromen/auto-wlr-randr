@@ -13,7 +13,7 @@ pub struct OutputSetting {
     pub output: String,
 
     #[serde(default)]
-    pub on: bool,
+    pub on: Option<bool>,
 
     #[serde(default)]
     pub mode: Option<String>,
@@ -40,7 +40,7 @@ pub struct OutputSetting {
     pub scale: Option<f32>,
 
     #[serde(default)]
-    pub adaptive_sync: bool,
+    pub adaptive_sync: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -81,10 +81,12 @@ impl Profile {
 
             args.push(format!("--output '{output_name}'"));
 
-            if setting.on {
-                args.push("--on".to_string());
-            } else {
-                args.push("--off".to_string());
+            if let Some(on) = setting.on {
+                if on {
+                    args.push("--on".to_string());
+                } else {
+                    args.push("--off".to_string());
+                }
             }
 
             if let Some(mode) = &setting.mode {
@@ -120,10 +122,12 @@ impl Profile {
                 args.push(format!("--scale '{scale}'"));
             }
 
-            if setting.adaptive_sync {
-                args.push("--adaptive-sync enabled".to_string());
-            } else {
-                args.push("--adaptive-sync disabled".to_string());
+            if let Some(adaptive_sync) = setting.adaptive_sync {
+                if adaptive_sync {
+                    args.push("--adaptive-sync enabled".to_string());
+                } else {
+                    args.push("--adaptive-sync disabled".to_string());
+                }
             }
         }
 
@@ -224,7 +228,7 @@ mod tests {
             exec: vec!["echo 'done'".into()],
             settings: vec![OutputSetting {
                 output: "HDMI-1".into(),
-                on: true,
+                on: Some(true),
                 mode: Some("1920x1080".into()),
                 preferred: false,
                 pos: Some("0,0".into()),
@@ -234,7 +238,7 @@ mod tests {
                 below: None,
                 transform: None,
                 scale: Some(1.0),
-                adaptive_sync: true,
+                adaptive_sync: Some(true),
             }],
         };
 
@@ -251,6 +255,34 @@ mod tests {
         assert!(commands[0].contains("--scale '1'"));
         assert!(commands[0].contains("--adaptive-sync enabled"));
         assert_eq!(commands[1], "echo 'done'");
+    }
+
+    #[test]
+    fn test_generate_commands_omits_unset_on_and_adaptive_sync() {
+        let profile = Profile {
+            exec: vec![],
+            settings: vec![OutputSetting {
+                output: "HDMI-1".into(),
+                on: None,
+                mode: Some("1920x1080".into()),
+                preferred: false,
+                pos: None,
+                left_of: None,
+                right_of: None,
+                above: None,
+                below: None,
+                transform: None,
+                scale: None,
+                adaptive_sync: None,
+            }],
+        };
+
+        let commands = profile.generate_commands(&HashMap::new());
+
+        assert_eq!(commands.len(), 1);
+        assert!(!commands[0].contains("--on"));
+        assert!(!commands[0].contains("--off"));
+        assert!(!commands[0].contains("--adaptive-sync"));
     }
 
     #[test]

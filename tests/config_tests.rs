@@ -105,7 +105,7 @@ fn test_find_matching_profile(
         exec: vec![],
         settings: vec![OutputSetting {
             output: "eDP-1".into(),
-            on: true,
+            on: Some(true),
             mode: Some("1920x1080".into()),
             preferred: false,
             pos: Some("0,0".into()),
@@ -115,7 +115,7 @@ fn test_find_matching_profile(
             below: None,
             transform: None,
             scale: Some(1.0),
-            adaptive_sync: false,
+            adaptive_sync: None,
         }],
     };
     profiles.insert("laptop".to_string(), laptop_profile);
@@ -123,7 +123,7 @@ fn test_find_matching_profile(
     let docked_settings = vec![
         OutputSetting {
             output: "eDP-1".into(),
-            on: false,
+            on: Some(false),
             mode: None,
             preferred: false,
             pos: None,
@@ -133,11 +133,11 @@ fn test_find_matching_profile(
             below: None,
             transform: None,
             scale: None,
-            adaptive_sync: false,
+            adaptive_sync: None,
         },
         OutputSetting {
             output: "HDMI-*".into(),
-            on: true,
+            on: Some(true),
             mode: Some("2560x1440".into()),
             preferred: false,
             pos: Some("0,0".into()),
@@ -147,7 +147,7 @@ fn test_find_matching_profile(
             below: None,
             transform: None,
             scale: Some(1.0),
-            adaptive_sync: false,
+            adaptive_sync: None,
         },
     ];
 
@@ -189,7 +189,7 @@ fn test_profile_generate_commands() {
         exec: vec!["echo 'Profile activated'".into()],
         settings: vec![OutputSetting {
             output: "HDMI-1".into(),
-            on: true,
+            on: Some(true),
             mode: Some("1920x1080".into()),
             preferred: false,
             pos: Some("0,0".into()),
@@ -199,7 +199,7 @@ fn test_profile_generate_commands() {
             below: None,
             transform: None,
             scale: Some(1.0),
-            adaptive_sync: true,
+            adaptive_sync: Some(true),
         }],
     };
 

@@ -97,9 +97,8 @@ wlr-randr --json | jq '.[] | {name, make, model, serial}'
 ```
 
 **on**
-: Whether the output should be enabled (true) or disabled (false). Defaults to
-**false** if omitted. When a profile is activated, every output listed in the profile receives
-an explicit on/off setting.
+: Whether the output should be enabled (**true**) or disabled (**false**). If omitted,
+the output's enabled state is not changed.
 
 **mode**
 : Display mode in the format "WIDTHxHEIGHT@RATE" (e.g., "1920x1080@144Hz"). The refresh rate
@@ -127,9 +126,8 @@ omitted. Should not be combined with **mode**.
 flipped-90, flipped-180, flipped-270
 
 **adaptive_sync**
-: Enables or disables adaptive synchronization (variable refresh rate).
-Defaults to **false** if omitted. When a profile is activated, every output listed in the
-profile receives an explicit adaptive sync setting.
+: Enables (**true**) or disables (**false**) adaptive synchronization (variable refresh
+rate). If omitted, adaptive sync is not changed.
 
 # EXAMPLES
 
