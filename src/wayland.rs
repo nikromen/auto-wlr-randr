@@ -114,7 +114,7 @@ impl WaylandState {
         }
     }
 
-    pub fn apply_profile_by_name(&mut self, profile_id: &str) -> Result<String> {
+    pub fn apply_profile_by_name(&mut self, profile_id: &str, force: bool) -> Result<String> {
         let profile = self
             .config
             .profiles
@@ -122,7 +122,20 @@ impl WaylandState {
             .ok_or_else(|| anyhow::anyhow!("Profile '{profile_id}' not found."))?
             .clone();
 
-        self.name_map = profile.resolve_name_map(&self.outputs);
+        if force {
+            self.name_map = profile.resolve_name_map(&self.outputs);
+        } else {
+            self.name_map = profile
+                .match_outputs(&self.outputs)
+                .ok_or_else(|| {
+                    let connected = self.outputs.len();
+                    let expected = profile.settings.len();
+                    anyhow::anyhow!(
+                        "Profile '{profile_id}' does not match current outputs ({connected} connected, profile expects {expected})"
+                    )
+                })?;
+        }
+
         self.activate_profile(profile_id, &profile, false);
         Ok(format!("Profile '{profile_id}' applied successfully."))
     }

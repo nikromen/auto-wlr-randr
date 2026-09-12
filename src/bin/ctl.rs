@@ -31,11 +31,15 @@ enum CliCommand {
 
     /// Switch to a specific profile
     ///
-    /// Changes the current output configuration to the specified profile
-    /// defined in the configuration file.
+    /// The profile must match currently connected outputs (same rules as
+    /// automatic profile matching). Use --force to apply regardless.
     Switch {
         /// Name of the profile to switch to
         profile_name: String,
+
+        /// Apply the profile even if it does not match current outputs
+        #[arg(long)]
+        force: bool,
     },
 }
 
@@ -56,7 +60,13 @@ fn main() -> anyhow::Result<()> {
     let command = match cli.command {
         CliCommand::Reload => Command::Reload,
         CliCommand::Status => Command::Status,
-        CliCommand::Switch { profile_name } => Command::Switch(profile_name),
+        CliCommand::Switch {
+            profile_name,
+            force,
+        } => Command::Switch {
+            profile: profile_name,
+            force,
+        },
     };
 
     let request = serde_json::to_vec(&command)?;

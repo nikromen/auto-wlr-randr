@@ -27,10 +27,10 @@ pub fn handle_command(command: Command, state: &mut WaylandState) -> Result<Stri
             });
             Ok(serde_json::to_string_pretty(&json_output)?)
         }
-        Command::Switch(profile_name) => {
-            log::info!("Switching to profile: {profile_name}");
-            state.apply_profile_by_name(&profile_name)?;
-            Ok(format!("Profile switched successfully to {profile_name}"))
+        Command::Switch { profile, force } => {
+            log::info!("Switching to profile: {profile} (force={force})");
+            state.apply_profile_by_name(&profile, force)?;
+            Ok(format!("Profile switched successfully to {profile}"))
         }
     }
 }

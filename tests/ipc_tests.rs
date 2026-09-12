@@ -21,16 +21,33 @@ fn test_command_serialization() {
         _ => panic!("Expected Command::Status"),
     }
 
-    let switch_cmd = Command::Switch("test-profile".to_string());
+    let switch_cmd = Command::Switch {
+        profile: "test-profile".to_string(),
+        force: false,
+    };
     let json = to_string(&switch_cmd).unwrap();
-    assert_eq!(json, r#"{"Switch":"test-profile"}"#);
+    assert_eq!(
+        json,
+        r#"{"Switch":{"profile":"test-profile","force":false}}"#
+    );
     let deserialized: Command = from_str(&json).unwrap();
     match deserialized {
-        Command::Switch(name) => {
-            assert_eq!(name, "test-profile");
+        Command::Switch { profile, force } => {
+            assert_eq!(profile, "test-profile");
+            assert!(!force);
         }
         _ => panic!("Expected Command::Switch"),
     }
+
+    let switch_force_cmd = Command::Switch {
+        profile: "test-profile".to_string(),
+        force: true,
+    };
+    let json = to_string(&switch_force_cmd).unwrap();
+    assert_eq!(
+        json,
+        r#"{"Switch":{"profile":"test-profile","force":true}}"#
+    );
 }
 
 #[test]

@@ -9,7 +9,11 @@ use std::path::{Path, PathBuf};
 pub enum Command {
     Reload,
     Status,
-    Switch(String),
+    Switch {
+        profile: String,
+        #[serde(default)]
+        force: bool,
+    },
 }
 
 pub struct SocketListener {
