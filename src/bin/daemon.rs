@@ -31,6 +31,9 @@ fn main() -> Result<()> {
     log::info!("Loading configuration from: {:?}", config_path);
     let config = Config::load_from_file(config_path)
         .with_context(|| format!("Failed to load configuration from {:?}", config_path))?;
+    config
+        .ensure_valid()
+        .context("Configuration validation failed")?;
 
     log::info!("Configuration loaded successfully.");
 

@@ -2,10 +2,56 @@ use crate::output::OutputInfo;
 use anyhow::{Context, Result};
 use glob::Pattern;
 use indexmap::IndexMap;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+
+const VALID_TRANSFORMS: &[&str] = &[
+    "normal",
+    "90",
+    "180",
+    "270",
+    "flipped",
+    "flipped-90",
+    "flipped-180",
+    "flipped-270",
+];
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ValidationLevel {
+    Warning,
+    Error,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ValidationIssue {
+    pub level: ValidationLevel,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ValidationReport {
+    pub issues: Vec<ValidationIssue>,
+}
+
+impl ValidationReport {
+    pub fn has_errors(&self) -> bool {
+        self.issues
+            .iter()
+            .any(|issue| issue.level == ValidationLevel::Error)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct DryRunResult {
+    pub connected_outputs: Vec<OutputInfo>,
+    pub matched_profile: Option<String>,
+    pub output_name_map: HashMap<String, String>,
+    pub wlr_randr_args: Option<Vec<String>>,
+    pub exec: Vec<String>,
+    pub on_no_match_exec: Vec<String>,
+}
 
 /// mirrors wlr-randr's output settings
 #[derive(Deserialize, Debug, Clone)]
@@ -241,7 +287,9 @@ impl Config {
     }
 
     pub fn reload_config(&mut self) -> Result<()> {
-        *self = Self::load_from_file(&self.config_path)?;
+        let config = Self::load_from_file(&self.config_path)?;
+        config.ensure_valid()?;
+        *self = config;
         Ok(())
     }
 
@@ -257,6 +305,155 @@ impl Config {
         }
 
         None
+    }
+
+    pub fn validate(&self) -> ValidationReport {
+        let mut report = ValidationReport::default();
+
+        if self.profiles.is_empty() {
+            report.issues.push(ValidationIssue {
+                level: ValidationLevel::Error,
+                message: "No profiles defined in configuration".to_string(),
+            });
+            return report;
+        }
+
+        let mut profile_patterns: Vec<(&str, Vec<&str>)> = Vec::new();
+
+        for (profile_id, profile) in &self.profiles {
+            if profile.settings.is_empty() && profile.exec.is_empty() {
+                report.issues.push(ValidationIssue {
+                    level: ValidationLevel::Warning,
+                    message: format!("Profile '{profile_id}' has no settings and no exec"),
+                });
+            }
+
+            let mut seen_outputs = HashMap::new();
+            let mut patterns = Vec::with_capacity(profile.settings.len());
+
+            for (index, setting) in profile.settings.iter().enumerate() {
+                let location = format!("profile '{profile_id}' settings[{index}]");
+
+                if let Err(error) = Pattern::new(&setting.output) {
+                    report.issues.push(ValidationIssue {
+                        level: ValidationLevel::Error,
+                        message: format!("{location}: invalid output pattern: {error}"),
+                    });
+                }
+
+                if setting
+                    .transform
+                    .as_deref()
+                    .is_some_and(|transform| !VALID_TRANSFORMS.contains(&transform))
+                {
+                    report.issues.push(ValidationIssue {
+                        level: ValidationLevel::Error,
+                        message: format!(
+                            "{location}: invalid transform '{}'",
+                            setting.transform.as_deref().unwrap_or_default()
+                        ),
+                    });
+                }
+
+                let relative_position_count = [
+                    setting.left_of.as_deref(),
+                    setting.right_of.as_deref(),
+                    setting.above.as_deref(),
+                    setting.below.as_deref(),
+                ]
+                .iter()
+                .filter(|value| value.is_some())
+                .count();
+
+                if setting.pos.is_some() && relative_position_count > 0 {
+                    report.issues.push(ValidationIssue {
+                        level: ValidationLevel::Warning,
+                        message: format!(
+                            "{location}: pos should not be combined with left_of/right_of/above/below"
+                        ),
+                    });
+                }
+
+                if relative_position_count > 1 {
+                    report.issues.push(ValidationIssue {
+                        level: ValidationLevel::Warning,
+                        message: format!("{location}: multiple relative position options are set"),
+                    });
+                }
+
+                if let Some(first_index) = seen_outputs.get(&setting.output) {
+                    report.issues.push(ValidationIssue {
+                        level: ValidationLevel::Warning,
+                        message: format!(
+                            "{location}: duplicate output pattern '{}' (also in settings[{first_index}])",
+                            setting.output
+                        ),
+                    });
+                } else {
+                    seen_outputs.insert(setting.output.clone(), index);
+                }
+
+                patterns.push(setting.output.as_str());
+            }
+
+            profile_patterns.push((profile_id, patterns));
+        }
+
+        for (index, (profile_a, patterns_a)) in profile_patterns.iter().enumerate() {
+            for (profile_b, patterns_b) in profile_patterns.iter().skip(index + 1) {
+                if patterns_a == patterns_b {
+                    report.issues.push(ValidationIssue {
+                        level: ValidationLevel::Warning,
+                        message: format!(
+                            "Profiles '{profile_a}' and '{profile_b}' have identical output patterns and may match the same outputs"
+                        ),
+                    });
+                }
+            }
+        }
+
+        report
+    }
+
+    pub fn ensure_valid(&self) -> Result<()> {
+        let report = self.validate();
+
+        for issue in &report.issues {
+            match issue.level {
+                ValidationLevel::Warning => log::warn!("{}", issue.message),
+                ValidationLevel::Error => log::error!("{}", issue.message),
+            }
+        }
+
+        if report.has_errors() {
+            anyhow::bail!("configuration validation failed");
+        }
+
+        Ok(())
+    }
+
+    pub fn dry_run(&self, connected_outputs: &[OutputInfo]) -> DryRunResult {
+        if let Some((profile_id, profile, name_map)) = self.find_matching_profile(connected_outputs)
+        {
+            let wlr_randr_args = profile.generate_wlr_randr_args(&name_map);
+            DryRunResult {
+                connected_outputs: connected_outputs.to_vec(),
+                matched_profile: Some(profile_id.to_string()),
+                output_name_map: name_map,
+                wlr_randr_args,
+                exec: profile.exec.clone(),
+                on_no_match_exec: Vec::new(),
+            }
+        } else {
+            DryRunResult {
+                connected_outputs: connected_outputs.to_vec(),
+                matched_profile: None,
+                output_name_map: HashMap::new(),
+                wlr_randr_args: None,
+                exec: Vec::new(),
+                on_no_match_exec: self.on_no_match_exec.clone(),
+            }
+        }
     }
 }
 

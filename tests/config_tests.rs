@@ -1,6 +1,6 @@
 use assert_fs::TempDir;
 use assert_fs::prelude::*;
-use auto_wlr_randr::config::{Config, OutputSetting, Profile};
+use auto_wlr_randr::config::{Config, OutputSetting, Profile, ValidationLevel, ValidationReport};
 use auto_wlr_randr::output::OutputInfo;
 use indexmap::IndexMap;
 use rstest::*;
@@ -310,4 +310,242 @@ fn test_reload_config() {
 
     assert_eq!(config.profiles.len(), 2);
     assert!(config.profiles.contains_key("docked"));
+}
+
+#[test]
+fn test_validate_reports_invalid_pattern_and_transform() {
+    let temp = TempDir::new().unwrap();
+    let config_file = temp.child("config.toml");
+
+    config_file
+        .write_str(
+            r#"
+[profile.broken]
+[[profile.broken.settings]]
+output = "[invalid"
+transform = "45"
+"#,
+        )
+        .unwrap();
+
+    let report = Config::load_from_file(config_file.path())
+        .unwrap()
+        .validate();
+
+    assert!(report.has_errors());
+    assert!(
+        report
+            .issues
+            .iter()
+            .any(|issue| issue.level == ValidationLevel::Error
+                && issue.message.contains("invalid output pattern"))
+    );
+    assert!(
+        report
+            .issues
+            .iter()
+            .any(|issue| issue.level == ValidationLevel::Error
+                && issue.message.contains("invalid transform"))
+    );
+}
+
+#[test]
+fn test_validate_warns_on_duplicate_and_identical_profiles() {
+    let temp = TempDir::new().unwrap();
+    let config_file = temp.child("config.toml");
+
+    config_file
+        .write_str(
+            r#"
+[profile.a]
+[[profile.a.settings]]
+output = "eDP-1"
+[[profile.a.settings]]
+output = "eDP-1"
+
+[profile.b]
+[[profile.b.settings]]
+output = "eDP-1"
+
+[profile.c]
+[[profile.c.settings]]
+output = "eDP-1"
+"#,
+        )
+        .unwrap();
+
+    let report = Config::load_from_file(config_file.path())
+        .unwrap()
+        .validate();
+
+    assert!(!report.has_errors());
+    assert!(
+        report
+            .issues
+            .iter()
+            .any(|issue| issue.level == ValidationLevel::Warning
+                && issue.message.contains("duplicate output pattern"))
+    );
+    assert!(report.issues.iter().any(|issue| {
+        issue.level == ValidationLevel::Warning
+            && issue.message.contains("identical output patterns")
+            && issue.message.contains("'b'")
+            && issue.message.contains("'c'")
+    }));
+}
+
+#[test]
+fn test_validate_valid_config_has_no_errors() {
+    let temp = TempDir::new().unwrap();
+    let config_file = temp.child("config.toml");
+
+    config_file
+        .write_str(
+            r#"
+[profile.laptop]
+[[profile.laptop.settings]]
+output = "eDP-1"
+transform = "normal"
+"#,
+        )
+        .unwrap();
+
+    let report = Config::load_from_file(config_file.path())
+        .unwrap()
+        .validate();
+
+    assert_eq!(report, ValidationReport::default());
+}
+
+#[test]
+fn test_dry_run_returns_matching_profile() {
+    let temp = TempDir::new().unwrap();
+    let config_file = temp.child("config.toml");
+
+    config_file
+        .write_str(
+            r#"
+[profile.laptop]
+exec = ["echo laptop"]
+
+[[profile.laptop.settings]]
+output = "eDP-1"
+on = true
+mode = "1920x1080"
+"#,
+        )
+        .unwrap();
+
+    let config = Config::load_from_file(config_file.path()).unwrap();
+    let outputs = vec![make_output("eDP-1", Some("Laptop"), Some("Screen"), None)];
+    let result = config.dry_run(&outputs);
+
+    assert_eq!(result.matched_profile.as_deref(), Some("laptop"));
+    assert_eq!(result.exec, vec!["echo laptop".to_string()]);
+    assert_eq!(
+        result.output_name_map.get("eDP-1"),
+        Some(&"eDP-1".to_string())
+    );
+    assert!(result.wlr_randr_args.is_some());
+    assert!(result.on_no_match_exec.is_empty());
+}
+
+#[test]
+fn test_dry_run_without_match_includes_on_no_match_exec() {
+    let temp = TempDir::new().unwrap();
+    let config_file = temp.child("config.toml");
+
+    config_file
+        .write_str(
+            r#"
+on_no_match_exec = ["notify-send no match"]
+
+[profile.dual]
+[[profile.dual.settings]]
+output = "eDP-1"
+[[profile.dual.settings]]
+output = "HDMI-*"
+"#,
+        )
+        .unwrap();
+
+    let config = Config::load_from_file(config_file.path()).unwrap();
+    let outputs = vec![make_output("eDP-1", Some("Laptop"), Some("Screen"), None)];
+    let result = config.dry_run(&outputs);
+
+    assert!(result.matched_profile.is_none());
+    assert!(result.wlr_randr_args.is_none());
+    assert_eq!(
+        result.on_no_match_exec,
+        vec!["notify-send no match".to_string()]
+    );
+}
+
+#[test]
+fn test_ensure_valid_fails_on_validation_errors() {
+    let temp = TempDir::new().unwrap();
+    let config_file = temp.child("config.toml");
+
+    config_file
+        .write_str(
+            r#"
+[profile.broken]
+[[profile.broken.settings]]
+output = "[invalid"
+"#,
+        )
+        .unwrap();
+
+    let config = Config::load_from_file(config_file.path()).unwrap();
+    assert!(config.ensure_valid().is_err());
+}
+
+#[test]
+fn test_ensure_valid_succeeds_with_warnings_only() {
+    let temp = TempDir::new().unwrap();
+    let config_file = temp.child("config.toml");
+
+    config_file
+        .write_str(
+            r#"
+[profile.empty]
+"#,
+        )
+        .unwrap();
+
+    let config = Config::load_from_file(config_file.path()).unwrap();
+    assert!(config.ensure_valid().is_ok());
+}
+
+#[test]
+fn test_reload_config_keeps_old_config_on_validation_failure() {
+    let temp = TempDir::new().unwrap();
+    let config_file = temp.child("config.toml");
+
+    config_file
+        .write_str(
+            r#"
+[profile.laptop]
+[[profile.laptop.settings]]
+output = "eDP-1"
+"#,
+        )
+        .unwrap();
+
+    let mut config = Config::load_from_file(config_file.path()).unwrap();
+    assert_eq!(config.profiles.len(), 1);
+
+    config_file
+        .write_str(
+            r#"
+[profile.broken]
+[[profile.broken.settings]]
+output = "[invalid"
+"#,
+        )
+        .unwrap();
+
+    assert!(config.reload_config().is_err());
+    assert_eq!(config.profiles.len(), 1);
+    assert!(config.profiles.contains_key("laptop"));
 }
