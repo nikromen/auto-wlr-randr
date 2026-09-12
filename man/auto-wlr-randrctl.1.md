@@ -25,9 +25,12 @@ applying any changes made since the daemon was started or the config was last re
 : Display current status information. Shows information about the currently active profile,
 connected outputs, and daemon state.
 
-**switch** _PROFILE_
-: Switch to a specific profile. Changes the current output configuration to the specified
-profile defined in the configuration file.
+**switch** _PROFILE_ \[**--force**\]
+: Switch to a specific profile. The profile must match the currently connected outputs using
+the same rules as automatic profile matching (see **auto-wlr-randr**(5)). If the profile does
+not match, the command fails and no configuration is applied. With **--force**, the profile is
+applied regardless of whether it matches current outputs; output patterns are still resolved
+where possible.
 
 **-h, --help**
 : Print help information
@@ -44,7 +47,10 @@ profile defined in the configuration file.
 : Reload the configuration file
 
 **auto-wlr-randrctl switch home-office**
-: Switch to the "home-office" profile defined in the config file
+: Switch to the "home-office" profile if it matches current outputs
+
+**auto-wlr-randrctl switch home-office --force**
+: Switch to the "home-office" profile even if it does not match current outputs
 
 # SEE ALSO
 

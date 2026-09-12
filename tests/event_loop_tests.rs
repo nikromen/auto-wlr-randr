@@ -83,7 +83,13 @@ fn test_handle_command_switch_valid() {
 
     let mut state = create_test_state(profiles);
 
-    let result = handle_command(Command::Switch("test".to_string()), &mut state);
+    let result = handle_command(
+        Command::Switch {
+            profile: "test".to_string(),
+            force: false,
+        },
+        &mut state,
+    );
 
     assert!(result.is_ok());
     assert_eq!(state.active_profile_id, Some("test".to_string()));
@@ -96,19 +102,56 @@ fn test_handle_command_switch_invalid_profile() {
 
     let mut state = create_test_state(profiles);
 
-    let result = handle_command(Command::Switch("nonexistent".to_string()), &mut state);
+    let result = handle_command(
+        Command::Switch {
+            profile: "nonexistent".to_string(),
+            force: false,
+        },
+        &mut state,
+    );
 
     assert!(result.is_err());
 }
 
 #[test]
-fn test_handle_command_switch_profile_without_auto_match() {
+fn test_handle_command_switch_no_match() {
     let mut profiles = IndexMap::new();
     profiles.insert("empty".to_string(), non_matching_test_profile());
 
     let mut state = create_test_state(profiles);
 
-    let result = handle_command(Command::Switch("empty".to_string()), &mut state);
+    let result = handle_command(
+        Command::Switch {
+            profile: "empty".to_string(),
+            force: false,
+        },
+        &mut state,
+    );
+
+    assert!(result.is_err());
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("does not match current outputs")
+    );
+    assert_eq!(state.active_profile_id, None);
+}
+
+#[test]
+fn test_handle_command_switch_force() {
+    let mut profiles = IndexMap::new();
+    profiles.insert("empty".to_string(), non_matching_test_profile());
+
+    let mut state = create_test_state(profiles);
+
+    let result = handle_command(
+        Command::Switch {
+            profile: "empty".to_string(),
+            force: true,
+        },
+        &mut state,
+    );
 
     assert!(result.is_ok());
     assert_eq!(state.active_profile_id, Some("empty".to_string()));
