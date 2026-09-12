@@ -69,8 +69,8 @@ impl WaylandState {
         }
     }
 
-    fn activate_profile(&mut self, profile_id: &str, profile: &Profile, reload: bool) {
-        if self.active_profile_id.as_deref() == Some(profile_id) && !reload {
+    fn activate_profile(&mut self, profile_id: &str, profile: &Profile, force: bool) {
+        if self.active_profile_id.as_deref() == Some(profile_id) && !force {
             log::debug!("Profile '{profile_id}' is already active, skipping.");
             return;
         }
@@ -91,8 +91,9 @@ impl WaylandState {
 
         match matched {
             Some((profile_id, profile, name_map)) => {
+                let force = reload || self.name_map != name_map;
                 self.name_map = name_map;
-                self.activate_profile(&profile_id, &profile, reload);
+                self.activate_profile(&profile_id, &profile, force);
             }
             None => {
                 if self.active_profile_id.take().is_some() {
@@ -122,6 +123,8 @@ impl WaylandState {
             .ok_or_else(|| anyhow::anyhow!("Profile '{profile_id}' not found."))?
             .clone();
 
+        let old_name_map = self.name_map.clone();
+
         if force {
             self.name_map = profile.resolve_name_map(&self.outputs);
         } else {
@@ -136,7 +139,8 @@ impl WaylandState {
                 })?;
         }
 
-        self.activate_profile(profile_id, &profile, false);
+        let apply = force || self.name_map != old_name_map;
+        self.activate_profile(profile_id, &profile, apply);
         Ok(format!("Profile '{profile_id}' applied successfully."))
     }
 }
